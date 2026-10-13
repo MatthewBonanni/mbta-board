@@ -52,7 +52,7 @@ function boardShell(): void {
     h(
       "header",
       { class: "masthead" },
-      h("span", { class: "mark", "aria-hidden": "true" }),
+      h("img", { class: "mark", src: `${import.meta.env.BASE_URL}icons/icon.svg`, alt: "", width: 28, height: 28 }),
       h("h1", { class: "masthead-title" }, config.title),
       clock,
       freshnessEl,
