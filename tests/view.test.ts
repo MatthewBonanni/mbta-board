@@ -62,18 +62,32 @@ describe("walk-time markers", () => {
   it("strikes unreachable departures and keeps the targeted one visible even past the first three", () => {
     const walking = { ...config, groups: [{ ...g, walkMinutes: 10 }] };
     const deps = [2, 5, 8, 14, 20].map((m) => ({ key: String(m), tripId: String(m), stopId: "1001", time: T0 + m * 60_000 + 5_000, kind: "live" as const, headsign: null }));
-    const r = buildBoardView(walking, lookup, state(feed(new Map([["a", deps]]), T0)), T0).sections[0]!.rows[0]!;
+    const section = buildBoardView(walking, lookup, state(feed(new Map([["a", deps]]), T0)), T0).sections[0]!;
+    const r = section.rows[0]!;
     expect(r.times.map((t) => [t.value, t.reach])).toEqual([
       ["2", "missed"],
       ["5", "missed"],
       ["14", "target"],
     ]);
-    expect(r.leave).toMatchObject({ lead: "Leave in 4 min", detail: "catch the bus in 14 min · 10 min walk" });
+    expect(r.leave).toMatchObject({ lead: "Leave in 4 min", detail: "catch the bus in 14 min" });
+    expect(section.meta).toBe("10 min walk");
   });
 
   it("marks nothing without a walk time", () => {
     const deps = [{ key: "1", tripId: "1", stopId: "1001", time: T0 + 60_000 * 2, kind: "live" as const, headsign: null }];
     expect(row(state(feed(new Map([["a", deps]]), T0))).times[0]!.reach).toBeNull();
+  });
+});
+
+describe("section walk times", () => {
+  it("keeps walk time on each row when rows under one heading differ", () => {
+    const deps = [{ key: "1", tripId: "1", stopId: "1001", time: T0 + 20 * 60_000, kind: "live" as const, headsign: null }];
+    const h = { ...g, displayLabel: "Corner", walkMinutes: 3 };
+    const other = { ...g, id: "b", stopId: "1002", displayLabel: "Corner", walkMinutes: 5 };
+    const v = buildBoardView({ ...config, groups: [h, other] }, lookup, state(feed(new Map([["a", deps], ["b", deps]]), T0)), T0);
+    expect(v.sections).toHaveLength(1);
+    expect(v.sections[0]!.meta).toBeNull();
+    expect(v.sections[0]!.rows.map((r) => r.leave?.detail)).toEqual(["catch the bus in 20 min · 3 min walk", "catch the bus in 20 min · 5 min walk"]);
   });
 });
 

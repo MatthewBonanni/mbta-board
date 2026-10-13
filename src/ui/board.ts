@@ -33,7 +33,13 @@ function row(r: RowView, opts: BoardRenderOptions): HTMLElement {
       { class: r.badge.text.length > 4 ? "badge badge-long" : "badge", style: `background:${r.badge.background};color:${r.badge.color}`, "data-mode": r.badge.mode },
       r.badge.text,
     ),
-    h("span", { class: "dest" }, h("span", { class: "visually-hidden" }, "to "), r.destination),
+    h(
+      "span",
+      { class: "dest" },
+      h("span", { class: "visually-hidden" }, "to "),
+      r.destination,
+      r.lastKnown ? h("span", { class: "row-tag" }, "Last known") : null,
+    ),
     r.message
       ? h("span", { class: "row-msg" }, r.message)
       : h("span", { class: "times" }, timeCell(next!, true), ...later.map((t) => timeCell(t, false))),
@@ -94,7 +100,7 @@ function section(s: SectionView, opts: BoardRenderOptions): HTMLElement {
       "div",
       { class: "stop-head" },
       h("h2", {}, s.heading),
-      h("p", { class: "stop-meta" }, [s.official, s.stopRef].filter(Boolean).join(" · ")),
+      s.meta ? h("p", { class: "stop-meta" }, s.meta) : null,
     ),
     h("ul", { class: "rows" }, ...s.rows.map((r) => row(r, opts))),
   );

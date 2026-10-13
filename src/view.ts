@@ -48,6 +48,8 @@ export interface RowView {
   destination: string;
   times: TimeView[];
   message: string | null;
+  /** Times shown are from the last successful update, not live. */
+  lastKnown: boolean;
   leave: LeaveView | null;
   alerts: AlertView[];
 }
@@ -55,8 +57,8 @@ export interface RowView {
 export interface SectionView {
   key: string;
   heading: string;
-  official: string | null;
-  stopRef: string;
+  /** Official stop name when a custom label replaces it, and a shared walk time. */
+  meta: string | null;
   rows: RowView[];
 }
 
@@ -109,22 +111,21 @@ function timeView(
   now: number,
   stale: boolean,
   showHeadsign: boolean,
-  first: boolean,
   reach: TimeView["reach"] = null,
 ): TimeView {
-  const base = timeViewBase(d, now, stale, showHeadsign, first);
+  const base = timeViewBase(d, now, stale, showHeadsign);
   if (reach === "missed") return { ...base, reach, label: `${base.label}, too soon to reach on foot` };
   if (reach === "target") return { ...base, reach, label: `${base.label}, the one to leave for` };
   return { ...base, reach };
 }
 
-function timeViewBase(d: Departure, now: number, stale: boolean, showHeadsign: boolean, first: boolean): Omit<TimeView, "reach"> {
+function timeViewBase(d: Departure, now: number, stale: boolean, showHeadsign: boolean): Omit<TimeView, "reach"> {
   const headsign = showHeadsign ? d.headsign : null;
   const clock = clockParts(d.time);
   const at = formatClock(d.time);
   const toward = headsign ? ` to ${headsign}` : "";
   if (stale) {
-    return { value: clock.time, unit: clock.period, prefix: first ? "Last known" : "", kind: "last-known", label: `Last known time ${at}${toward}, not live`, headsign };
+    return { value: clock.time, unit: clock.period, prefix: "", kind: "last-known", label: `Last known time ${at}${toward}, not live`, headsign };
   }
   if (d.kind === "scheduled") {
     return { value: clock.time, unit: clock.period, prefix: "Est.", kind: "scheduled", label: `Scheduled estimate ${at}${toward}`, headsign };
@@ -178,6 +179,7 @@ export function leaveView(
   stale: boolean,
   showHeadsign: boolean,
   noun = "departure",
+  includeWalk = true,
 ): LeaveView | null {
   if (walkMinutes === undefined || !departures.length) return null;
   const walk = `${walkMinutes} min walk`;
@@ -185,7 +187,7 @@ export function leaveView(
   if (!d) {
     return {
       lead: "Too late for listed departures",
-      detail: walk,
+      detail: includeWalk ? walk : "",
       label: `Too late to walk to any listed departure, ${walkMinutes} minute walk`,
       urgent: false,
       targetKey: null,
@@ -194,7 +196,7 @@ export function leaveView(
   const leaveAt = d.time - walkMinutes * 60_000;
   const toward = showHeadsign && d.headsign ? ` to ${d.headsign}` : "";
   const target = describeTarget(d, noun, toward, now, stale);
-  const extras = [stale ? "last known" : null, `catch ${target}`, walk, d.kind === "approx" ? "may be delayed" : null];
+  const extras = [`catch ${target}`, includeWalk ? walk : null, d.kind === "approx" ? "may be delayed" : null];
   let lead: string;
   let mins = Infinity;
   if (stale || d.kind === "scheduled") {
@@ -218,13 +220,14 @@ function rowView(
   state: ControllerState,
   freshness: Freshness,
   now: number,
+  includeWalk = true,
 ): RowView {
   const route = lookup.route(g.routeId);
   const background = route?.color ?? "#575752";
   const all = state.predictions.data?.get(g.id) ?? [];
   const stale = freshness === "stale";
   const pending = all.filter((d) => d.time >= now - LEAVE_GRACE_MS);
-  const leave = leaveView(pending, g.walkMinutes, now, stale, !g.destinationFilter && new Set(pending.slice(0, TIMES_PER_ROW).map((d) => d.headsign)).size > 1, vehicleNoun(route?.type));
+  const leave = leaveView(pending, g.walkMinutes, now, stale, !g.destinationFilter && new Set(pending.slice(0, TIMES_PER_ROW).map((d) => d.headsign)).size > 1, vehicleNoun(route?.type), includeWalk);
   let upcoming = pending.slice(0, TIMES_PER_ROW);
   const target = leave?.targetKey ? pending.find((d) => d.key === leave.targetKey) : undefined;
   if (target && !upcoming.includes(target)) upcoming = [...upcoming.slice(0, TIMES_PER_ROW - 1), target];
@@ -257,8 +260,9 @@ function rowView(
       mode: route ? String(route.type) : "",
     },
     destination,
-    times: upcoming.map((d, i) => timeView(d, now, stale, mixed && !g.destinationFilter, i === 0, reach(d))),
+    times: upcoming.map((d) => timeView(d, now, stale, mixed && !g.destinationFilter, reach(d))),
     message,
+    lastKnown: stale && upcoming.length > 0,
     leave: upcoming.length ? leave : null,
     alerts,
   };
@@ -287,28 +291,30 @@ function freshnessText(f: Freshness, state: ControllerState, now: number): { tex
 
 export function buildBoardView(config: BoardConfig, lookup: Lookup, state: ControllerState, now: number): BoardView {
   const freshness = freshnessOf(state, config.groups.length > 0, now);
-  const sections: SectionView[] = [];
+  const runs: DepartureGroup[][] = [];
+  let lastKey: string | null = null;
   for (const g of config.groups) {
-    const stop = lookup.stop(g.stopId);
-    const official = stop?.name ?? null;
-    const heading = g.displayLabel || official || `Stop ${g.stopId}`;
     const key = g.displayLabel ? `label|${g.displayLabel}` : `stop|${g.stopId}`;
-    const last = sections[sections.length - 1];
-    const row = rowView(g, lookup, state, freshness, now);
-    const ref = stop?.locationType === 1 ? `Station ${g.stopId}` : `Stop ${g.stopId}`;
-    if (last && last.key === key) {
-      last.rows.push(row);
-      if (!last.stopRef.split(" · ").includes(ref)) last.stopRef += ` · ${ref}`;
-      continue;
-    }
-    sections.push({
-      key,
-      heading,
-      official: g.displayLabel && official && official !== g.displayLabel ? official : null,
-      stopRef: ref,
-      rows: [row],
-    });
+    if (key === lastKey) runs[runs.length - 1]!.push(g);
+    else runs.push([g]);
+    lastKey = key;
   }
+  const sections: SectionView[] = runs.map((groups) => {
+    const first = groups[0]!;
+    const official = lookup.stop(first.stopId)?.name ?? null;
+    const walks = new Set(groups.map((g) => g.walkMinutes));
+    const sharedWalk = walks.size === 1 ? first.walkMinutes : undefined;
+    const meta = [
+      first.displayLabel && official && official !== first.displayLabel ? official : null,
+      sharedWalk !== undefined ? `${sharedWalk} min walk` : null,
+    ].filter(Boolean);
+    return {
+      key: first.displayLabel ? `label|${first.displayLabel}` : `stop|${first.stopId}`,
+      heading: first.displayLabel || official || `Stop ${first.stopId}`,
+      meta: meta.length ? meta.join(" · ") : null,
+      rows: groups.map((g) => rowView(g, lookup, state, freshness, now, sharedWalk === undefined)),
+    };
+  });
   const a = state.alerts;
   const alertsStale =
     config.groups.length > 0 &&

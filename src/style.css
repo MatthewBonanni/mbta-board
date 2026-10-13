@@ -300,8 +300,7 @@ a {
   padding-left: max(var(--gutter), env(safe-area-inset-left));
   padding-right: max(var(--gutter), env(safe-area-inset-right));
   padding-bottom: max(var(--s6), env(safe-area-inset-bottom));
-  column-gap: 48px;
-  column-rule: 1px solid var(--rule);
+  column-gap: 64px;
 }
 
 @media (min-width: 62rem) {
@@ -397,13 +396,11 @@ a {
   align-items: baseline;
   gap: 0 var(--s2);
   margin-top: var(--s2);
-  padding-left: var(--s2);
-  border-left: 3px solid var(--ink);
   font-weight: 400;
 }
 
 .leave-lead {
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   font-weight: 700;
 }
 
@@ -464,7 +461,8 @@ a {
 
 .t-unit {
   font-size: var(--t-meta);
-  font-weight: 700;
+  font-weight: 400;
+  color: var(--ink-2);
 }
 
 .t-next .t-val {
@@ -500,17 +498,27 @@ a {
   color: var(--ink-2);
 }
 
-.t-last-known .t-prefix:not(:empty) {
-  color: var(--ink);
-  background: var(--yellow);
+.row-tag {
+  display: inline-block;
+  margin-left: var(--s2);
   padding: 0 var(--s1);
+  background: var(--yellow);
+  color: var(--ink);
+  font-size: var(--t-meta);
+  font-weight: 700;
+  vertical-align: 2px;
+  white-space: nowrap;
 }
 
 /* Walk-time markers: struck through when unreachable on foot, underlined when it's the one to leave for. */
 .t-missed .t-main {
   color: var(--ink-2);
   text-decoration: line-through;
-  text-decoration-thickness: 3px;
+  text-decoration-thickness: 2px;
+}
+
+.t-next.t-missed .t-val {
+  font-size: var(--t-later);
 }
 
 .t-missed .t-val {
@@ -627,7 +635,11 @@ a {
 .t-missed .t-main {
   color: var(--ink-2);
   text-decoration: line-through;
-  text-decoration-thickness: 3px;
+  text-decoration-thickness: 2px;
+}
+
+.t-next.t-missed .t-val {
+  font-size: var(--t-later);
 }
 
 .t-missed .t-val {

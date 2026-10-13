@@ -75,11 +75,13 @@ describe("BoardController", () => {
     setFail(true);
     await advance(30_000);
     expect(view().freshness).toBe("stale");
-    expect(view().sections[0]!.rows[0]!.times[0]).toMatchObject({ kind: "last-known", prefix: "Last known" });
+    expect(view().sections[0]!.rows[0]!.times[0]).toMatchObject({ kind: "last-known", value: expect.stringMatching(/^\d{1,2}:\d{2}$/) });
+    expect(view().sections[0]!.rows[0]!.lastKnown).toBe(true);
 
     setFail(false);
     await advance(120_000);
     expect(view().freshness).toBe("live");
+    expect(view().sections[0]!.rows[0]!.lastKnown).toBe(false);
   });
 
   it("crossing the freshness cutoff without a new success removes Live", async () => {
