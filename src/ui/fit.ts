@@ -10,10 +10,14 @@ export interface FitResult {
 
 const MIN_ZOOM = 0.45;
 
-export function fitToScreen(content: HTMLElement): FitResult {
+/**
+ * `content` is zoomed; `frame` is its unzoomed parent. Measuring the frame's bottom edge gives
+ * viewport pixels in every engine, whatever the page's overflow setting and however the engine
+ * reports sizes inside a zoomed element (WebKit and Chromium differ there).
+ */
+export function fitToScreen(frame: HTMLElement, content: HTMLElement): FitResult {
   const root = document.documentElement;
-  // Measure real page overflow; column balancing makes height vary unevenly with zoom.
-  const fits = () => root.scrollHeight <= window.innerHeight + 1;
+  const fits = () => frame.getBoundingClientRect().bottom <= window.innerHeight + 0.5;
   const apply = (r: FitResult) => {
     root.classList.toggle("fit-compact", r.compact);
     content.dataset.columns = String(r.columns);

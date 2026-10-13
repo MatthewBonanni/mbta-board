@@ -70,7 +70,8 @@ const freshnessEl = h("p", { class: "freshness" });
 const boardMain = h("main", { class: "board", id: "main" });
 const banners = h("div", { class: "banners" });
 const statusBox = h("div", { class: "status-box" });
-const fitBox = h("div", { class: "board-fit" }, banners, statusBox, boardMain);
+const fitContent = h("div", { class: "board-fit-content" }, banners, statusBox, boardMain);
+const fitBox = h("div", { class: "board-fit" }, fitContent);
 const masthead = h("header", { class: "masthead" });
 
 function settingsButton(): HTMLElement {
@@ -135,7 +136,7 @@ function renderBoard(): void {
   boardMain.classList.toggle("is-empty", !config.groups.length);
   if (!config.groups.length) {
     statusBox.replaceChildren();
-    clearFit(fitBox);
+    clearFit(fitContent);
     replaceKeepingFocus(
       boardMain,
       h(
@@ -179,9 +180,9 @@ function refit(): void {
   if (location.hash === "#settings") return;
   fittedSize = `${window.innerWidth}x${window.innerHeight}`;
   if (prefs.fitScreen && config.groups.length) {
-    fitToScreen(fitBox);
+    fitToScreen(fitBox, fitContent);
   } else {
-    clearFit(fitBox);
+    clearFit(fitContent);
   }
   if (prefs.layout === "timeline") declutter(boardMain);
 }
@@ -196,7 +197,7 @@ function commit(next: BoardConfig): void {
 
 function route(): void {
   if (location.hash === "#settings") {
-    clearFit(fitBox);
+    clearFit(fitContent);
     mountSettings(app, {
       getConfig: () => config,
       commit,

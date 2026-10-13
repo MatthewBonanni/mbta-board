@@ -973,11 +973,11 @@ html.no-scroll body {
   overscroll-behavior: none;
 }
 
-.board-fit[data-columns="1"] .board:not(.is-empty) {
+.board-fit-content[data-columns="1"] .board:not(.is-empty) {
   columns: 1;
 }
 
-.board-fit[data-columns="2"] .board:not(.is-empty) {
+.board-fit-content[data-columns="2"] .board:not(.is-empty) {
   columns: 2;
 }
 
