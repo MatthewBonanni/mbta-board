@@ -327,7 +327,7 @@ a {
 .stop-head {
   border-top: 4px solid var(--ink);
   padding-top: var(--s2);
-  padding-bottom: var(--s1);
+  padding-bottom: var(--s2);
 }
 
 .stop-head h2 {
@@ -352,7 +352,6 @@ a {
   align-items: center;
   column-gap: var(--s4);
   padding: var(--row-pad) 0;
-  border-bottom: 1px solid var(--rule);
 }
 
 .badge {
@@ -384,6 +383,7 @@ a {
 
 .dest {
   grid-area: dest;
+  overflow-wrap: anywhere;
   font-size: var(--t-row);
   font-weight: 700;
   line-height: 1.2;
@@ -405,7 +405,6 @@ a {
 .leave-lead {
   font-size: 1.0625rem;
   font-weight: 700;
-  white-space: nowrap;
 }
 
 .leave-urgent .leave-lead {
@@ -534,7 +533,6 @@ a {
 
 .row-alerts {
   grid-area: alerts;
-  margin-top: var(--s2);
 }
 
 .alert + .alert {
@@ -543,6 +541,7 @@ a {
 
 .alert-toggle {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--s2);
   width: 100%;
@@ -577,6 +576,8 @@ a {
 }
 
 .alert-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-color: var(--rule);
@@ -610,7 +611,7 @@ a {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: var(--s1) var(--s5);
+    gap: var(--s3) var(--s5);
   }
 
   .t {

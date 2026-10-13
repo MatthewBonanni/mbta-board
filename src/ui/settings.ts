@@ -1127,7 +1127,7 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
         h(
           "p",
           { class: "muted" },
-          "Times refresh about every 30 seconds while the board is visible. “Est.” marks schedule-based estimates; “Approx.” marks buses that appear stalled or delayed; “Last” marks old times kept while updates are failing.",
+          "Times refresh about every 30 seconds while the board is visible. “Est.” marks schedule-based estimates; “Approx.” marks buses that appear stalled or delayed; “Last known” marks old times kept while updates are failing. With a starting point set, the departure to leave for is underlined and ones you can’t reach on foot are struck through.",
         ),
         h(
           "p",
