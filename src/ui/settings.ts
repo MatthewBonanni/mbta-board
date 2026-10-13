@@ -23,6 +23,7 @@ import {
   type StopServices,
 } from "../metadata";
 import { OsmError, parseCoordinates, type OsmClient, type Place } from "../osm";
+import type { DevicePrefs } from "../prefs";
 import { badgeTextColor } from "../view";
 import { applyWalks, estimateWalks } from "../walking";
 import type { WakeLockManager } from "../wake";
@@ -34,6 +35,8 @@ export interface SettingsDeps {
   metadata: Metadata;
   osm: OsmClient;
   wake: WakeLockManager;
+  prefs(): DevicePrefs;
+  setPrefs(next: DevicePrefs): void;
   storageWarning(): string | null;
   close(): void;
 }
@@ -899,8 +902,58 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
       unsupported: "This browser cannot keep the screen awake.",
     };
     const showFallback = wake.status === "unsupported" || wake.status === "denied";
+    const p = deps.prefs();
+    const set = (patch: Partial<DevicePrefs>) => {
+      deps.setPrefs({ ...deps.prefs(), ...patch });
+      renderDisplay();
+    };
+    const radios = <K extends "theme" | "layout">(key: K, legend: string, options: [DevicePrefs[K], string][]) =>
+      h(
+        "fieldset",
+        { class: "field" },
+        h("legend", {}, legend),
+        ...options.map(([value, text]) =>
+          h(
+            "label",
+            { class: "choice" },
+            h("input", {
+              type: "radio",
+              name: key,
+              value,
+              checked: p[key] === value,
+              "data-focus-key": `${key}-${value}`,
+              onchange: () => set({ [key]: value } as Partial<DevicePrefs>),
+            }),
+            text,
+          ),
+        ),
+      );
+    const check = (key: "nextLeave" | "statusStrip", text: string, hint: string) =>
+      h(
+        "div",
+        { class: "field" },
+        h(
+          "label",
+          { class: "choice" },
+          h("input", { type: "checkbox", checked: p[key], "data-focus-key": key, onchange: (e: Event) => set({ [key]: (e.target as HTMLInputElement).checked }) }),
+          text,
+        ),
+        h("p", { class: "muted choice-hint" }, hint),
+      );
     replaceKeepingFocus(
       displayBox,
+      radios("theme", "Appearance", [
+        ["light", "Light"],
+        ["dark", "Dark"],
+        ["night", "Dark from sunset to sunrise"],
+        ["system", "Match this device’s setting"],
+      ]),
+      radios("layout", "Layout", [
+        ["list", "List: next three times per row"],
+        ["timeline", "Timeline: departures over the next 45 minutes"],
+      ]),
+      check("nextLeave", "Next-leave banner", "A large line at the top naming the departure you need to leave for soonest. Needs a starting point."),
+      check("statusStrip", "Service alert strip", "One strip under the header listing alerts by route, instead of an alert line on each row."),
       h(
         "label",
         { class: "choice" },

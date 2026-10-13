@@ -8,6 +8,7 @@ import { clockParts, formatAge, formatClock, minutesUntil } from "./time";
 export const FRESHNESS_CUTOFF_MS = 60_000;
 export const ALERT_STALE_MS = 4 * 60_000;
 const TIMES_PER_ROW = 3;
+export const TIMELINE_MINUTES = 45;
 
 export type Freshness = "idle" | "loading" | "live" | "stale";
 
@@ -40,6 +41,44 @@ export interface LeaveView {
   label: string;
   urgent: boolean;
   targetKey: string | null;
+  /** When to leave, for ranking rows against each other. */
+  leaveAt: number | null;
+}
+
+export interface TimelineTick {
+  pos: number;
+  label: string;
+  kind: TimeView["kind"];
+  reach: TimeView["reach"];
+}
+
+export interface TimelineView {
+  ticks: TimelineTick[];
+  /** Walking segment ending at the targeted departure, as fractions of the window. */
+  walk: { from: number; to: number } | null;
+  /** Shown when nothing departs within the window. */
+  beyond: string | null;
+}
+
+export interface NextLeaveView {
+  lead: string;
+  detail: string;
+  label: string;
+  urgent: boolean;
+  badge: RowView["badge"];
+  destination: string;
+  place: string;
+}
+
+export interface StatusItem {
+  routeId: string;
+  badge: RowView["badge"];
+  alerts: AlertView[];
+}
+
+export interface StatusView {
+  withAlerts: StatusItem[];
+  quiet: StatusItem[];
 }
 
 export interface RowView {
@@ -50,6 +89,7 @@ export interface RowView {
   message: string | null;
   /** Times shown are from the last successful update, not live. */
   lastKnown: boolean;
+  timeline: TimelineView;
   leave: LeaveView | null;
   alerts: AlertView[];
 }
@@ -68,6 +108,8 @@ export interface BoardView {
   freshnessDetail: string | null;
   alertsStale: boolean;
   sections: SectionView[];
+  nextLeave: NextLeaveView | null;
+  status: StatusView;
 }
 
 export interface Lookup {
@@ -191,6 +233,7 @@ export function leaveView(
       label: `Too late to walk to any listed departure, ${walkMinutes} minute walk`,
       urgent: false,
       targetKey: null,
+      leaveAt: null,
     };
   }
   const leaveAt = d.time - walkMinutes * 60_000;
@@ -211,7 +254,52 @@ export function leaveView(
     label: `${lead} to catch ${target}, ${walkMinutes} minute walk${stale ? ", based on last known times" : ""}`,
     urgent: mins <= 2,
     targetKey: d.key,
+    leaveAt,
   };
+}
+
+function timelineView(
+  pending: Departure[],
+  target: Departure | undefined,
+  walkMinutes: number | undefined,
+  reach: (d: Departure) => TimeView["reach"],
+  now: number,
+  stale: boolean,
+): TimelineView {
+  const ticks: TimelineTick[] = [];
+  let lastLabelled = -Infinity;
+  for (const d of pending) {
+    const m = minutesUntil(d.time, now);
+    if (m > TIMELINE_MINUTES) break;
+    const clockLabel = stale || d.kind === "scheduled";
+    // Skip labels that would collide with the previous one; the tick still shows.
+    let room = m - lastLabelled >= (clockLabel ? 7 : 3);
+    if (!room && reach(d) === "target") {
+      const prev = [...ticks].reverse().find((t) => t.label);
+      if (prev) prev.label = "";
+      room = true;
+    }
+    if (room) lastLabelled = m;
+    ticks.push({
+      pos: m / TIMELINE_MINUTES,
+      label: !room ? "" : clockLabel ? clockParts(d.time).time : m === 0 ? "now" : String(m),
+      kind: stale ? "last-known" : d.kind,
+      reach: reach(d),
+    });
+  }
+  let walk: TimelineView["walk"] = null;
+  if (target && walkMinutes !== undefined) {
+    const m = minutesUntil(target.time, now);
+    if (m <= TIMELINE_MINUTES) walk = { from: Math.max(0, m - walkMinutes) / TIMELINE_MINUTES, to: m / TIMELINE_MINUTES };
+  }
+  const first = pending[0];
+  const beyond =
+    !ticks.length && first
+      ? stale || first.kind === "scheduled"
+        ? `Next ${first.kind === "scheduled" ? "est. " : ""}${formatClock(first.time)}`
+        : `Next in ${minutesUntil(first.time, now)} min`
+      : null;
+  return { ticks, walk, beyond };
 }
 
 function rowView(
@@ -263,6 +351,7 @@ function rowView(
     times: upcoming.map((d) => timeView(d, now, stale, mixed && !g.destinationFilter, reach(d))),
     message,
     lastKnown: stale && upcoming.length > 0,
+    timeline: timelineView(pending, target, g.walkMinutes, reach, now, stale),
     leave: upcoming.length ? leave : null,
     alerts,
   };
@@ -315,11 +404,59 @@ export function buildBoardView(config: BoardConfig, lookup: Lookup, state: Contr
       rows: groups.map((g) => rowView(g, lookup, state, freshness, now, sharedWalk === undefined)),
     };
   });
+  const nextLeave = pickNextLeave(sections);
+  const status = statusView(config, lookup, state, now);
   const a = state.alerts;
   const alertsStale =
     config.groups.length > 0 &&
     a.lastAttemptAt !== null &&
     (a.error !== null || a.lastSuccessAt === null || now - a.lastSuccessAt > ALERT_STALE_MS);
   const { text, detail } = freshnessText(freshness, state, now);
-  return { freshness, freshnessText: text, freshnessDetail: detail, alertsStale, sections };
+  return { freshness, freshnessText: text, freshnessDetail: detail, alertsStale, sections, nextLeave, status };
+}
+
+/** The reachable departure, across the whole board, that you have to leave for soonest. */
+function pickNextLeave(sections: SectionView[]): NextLeaveView | null {
+  let best: { row: RowView; section: SectionView; leave: LeaveView } | null = null;
+  for (const section of sections) {
+    for (const row of section.rows) {
+      const leave = row.leave;
+      if (!leave || leave.leaveAt === null) continue;
+      if (!best || leave.leaveAt < best.leave.leaveAt!) best = { row, section, leave };
+    }
+  }
+  if (!best) return null;
+  const { row, section, leave } = best;
+  const walkInHeading = section.meta?.match(/(\d+ min walk)/)?.[1];
+  return {
+    lead: leave.lead,
+    detail: [leave.detail, walkInHeading].filter(Boolean).join(" · "),
+    label: `${leave.label}, ${row.badge.text} to ${row.destination} from ${section.heading}`,
+    urgent: leave.urgent,
+    badge: row.badge,
+    destination: row.destination,
+    place: section.heading,
+  };
+}
+
+function statusView(config: BoardConfig, lookup: Lookup, state: ControllerState, now: number): StatusView {
+  const byRoute = new Map<string, StatusItem>();
+  for (const g of config.groups) {
+    let item = byRoute.get(g.routeId);
+    const route = lookup.route(g.routeId);
+    if (!item) {
+      const background = route?.color ?? "#575752";
+      item = {
+        routeId: g.routeId,
+        badge: { text: routeLabel(route, g.routeId), background, color: badgeTextColor(background, route?.textColor ?? WHITE), mode: route ? String(route.type) : "" },
+        alerts: [],
+      };
+      byRoute.set(g.routeId, item);
+    }
+    for (const a of state.alerts.data ? alertsForGroup(state.alerts.data, g, route?.type, now) : []) {
+      if (!item.alerts.some((x) => x.id === a.id)) item.alerts.push(alertView(a));
+    }
+  }
+  const items = [...byRoute.values()];
+  return { withAlerts: items.filter((i) => i.alerts.length), quiet: items.filter((i) => !i.alerts.length) };
 }

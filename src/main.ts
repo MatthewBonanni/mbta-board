@@ -4,8 +4,10 @@ import { browserStore, loadConfig, saveConfig, type BoardConfig } from "./config
 import { BoardController, type ControllerState } from "./controller";
 import { Metadata } from "./metadata";
 import { OsmClient } from "./osm";
+import { readPrefs, writePrefs, type DevicePrefs } from "./prefs";
+import { BOSTON, isDark } from "./sun";
 import { formatClock } from "./time";
-import { renderSections } from "./ui/board";
+import { declutter, renderNextLeave, renderSections, renderStatus } from "./ui/board";
 import { announce, h, replaceKeepingFocus } from "./ui/dom";
 import { mountSettings } from "./ui/settings";
 import { buildBoardView, type Freshness, type Lookup } from "./view";
@@ -20,7 +22,30 @@ let storageWarning: string | null = loaded.warning ?? null;
 const queue = new RequestQueue();
 const metadata = new Metadata(queue, store);
 const controller = new BoardController(queue, metadata);
-const wake = new WakeLockManager(store);
+let prefs: DevicePrefs = readPrefs(store);
+const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+function setPrefs(next: DevicePrefs): void {
+  prefs = next;
+  writePrefs(store, next);
+  applyTheme();
+  lastSignature = "";
+}
+
+function applyTheme(): void {
+  const where = config.origin ?? BOSTON;
+  const dark =
+    prefs.theme === "dark" ||
+    (prefs.theme === "night" && isDark(Date.now(), where.lat, where.lon)) ||
+    (prefs.theme === "system" && darkQuery.matches);
+  const theme = dark ? "dark" : "light";
+  if (document.documentElement.dataset.theme !== theme) {
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#000000" : "#161616");
+  }
+}
+
+const wake = new WakeLockManager(() => prefs, setPrefs);
 const osm = new OsmClient();
 
 interface DataSource {
@@ -42,6 +67,7 @@ const clock = h("time", { class: "clock" });
 const freshnessEl = h("p", { class: "freshness" });
 const boardMain = h("main", { class: "board", id: "main" });
 const banners = h("div", { class: "banners" });
+const statusBox = h("div", { class: "status-box" });
 
 function settingsButton(): HTMLElement {
   return h("a", { href: "#settings", class: "btn btn-band", "aria-label": "Settings" }, "Settings");
@@ -52,13 +78,14 @@ function boardShell(): void {
     h(
       "header",
       { class: "masthead" },
-      h("img", { class: "mark", src: `${import.meta.env.BASE_URL}icons/icon.svg`, alt: "", width: 28, height: 28 }),
+      h("img", { class: "mark", src: `${import.meta.env.BASE_URL}icons/mark.svg`, alt: "", width: 28, height: 28 }),
       h("h1", { class: "masthead-title" }, config.title),
       clock,
       freshnessEl,
       settingsButton(),
     ),
     banners,
+    statusBox,
     boardMain,
     liveRegion,
   );
@@ -68,6 +95,7 @@ function boardShell(): void {
 
 function renderBoard(): void {
   const now = source.now();
+  applyTheme();
   const view = buildBoardView(config, source.lookup, source.state(), now);
   clock.textContent = formatClock(now);
   clock.dateTime = new Date(now).toISOString();
@@ -94,12 +122,18 @@ function renderBoard(): void {
   banners.replaceChildren(...bannerItems);
 
   // Rebuild rows only when something visible changed, so focus and screen readers aren't disturbed every tick.
-  const signature = JSON.stringify([view.sections, [...openAlerts]]);
-  if (signature === lastSignature) return;
+  const showStatus = prefs.statusStrip && config.groups.length > 0;
+  const nextLeave = prefs.nextLeave ? view.nextLeave : null;
+  const signature = JSON.stringify([view.sections, [...openAlerts], prefs, nextLeave, showStatus ? view.status : null]);
+  if (signature === lastSignature) {
+    if (prefs.layout === "timeline") declutter(boardMain);
+    return;
+  }
   lastSignature = signature;
 
   boardMain.classList.toggle("is-empty", !config.groups.length);
   if (!config.groups.length) {
+    statusBox.replaceChildren();
     replaceKeepingFocus(
       boardMain,
       h(
@@ -121,18 +155,20 @@ function renderBoard(): void {
         h("a", { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener" }, "OpenStreetMap contributors"),
       )
     : null;
-  replaceKeepingFocus(
-    boardMain,
-    ...renderSections(view, {
-      openAlerts,
-      onToggleAlert: (key) => {
-        if (openAlerts.has(key)) openAlerts.delete(key);
-        else openAlerts.add(key);
-        renderBoard();
-      },
-    }),
-    credit,
-  );
+  const opts = {
+    openAlerts,
+    onToggleAlert: (key: string) => {
+      if (openAlerts.has(key)) openAlerts.delete(key);
+      else openAlerts.add(key);
+      renderBoard();
+    },
+    layout: prefs.layout,
+    hideRowAlerts: showStatus,
+  };
+  replaceKeepingFocus(statusBox, showStatus ? renderStatus(view.status, opts) : null);
+  boardMain.dataset.layout = prefs.layout;
+  replaceKeepingFocus(boardMain, nextLeave ? renderNextLeave(nextLeave) : null, ...renderSections(view, opts), credit);
+  if (prefs.layout === "timeline") declutter(boardMain);
 }
 
 function commit(next: BoardConfig): void {
@@ -151,6 +187,8 @@ function route(): void {
       metadata,
       osm,
       wake,
+      prefs: () => prefs,
+      setPrefs,
       storageWarning: () => storageWarning,
       close: () => {
         location.hash = "";
@@ -169,6 +207,14 @@ async function init(): Promise<void> {
     const { demoSource } = await import("./demo");
     const mode = new URLSearchParams(location.search).get("demo") ?? "";
     const d = demoSource(mode);
+    const q = new URLSearchParams(location.search);
+    prefs = {
+      ...prefs,
+      ...(q.get("theme") ? { theme: q.get("theme") as DevicePrefs["theme"] } : {}),
+      ...(q.get("layout") ? { layout: q.get("layout") as DevicePrefs["layout"] } : {}),
+      ...(q.has("strip") ? { statusStrip: q.get("strip") !== "0" } : {}),
+      ...(q.has("banner") ? { nextLeave: q.get("banner") !== "0" } : {}),
+    };
     config = d.config;
     source = d;
     demo = true;
@@ -181,6 +227,12 @@ async function init(): Promise<void> {
   }
 
   window.addEventListener("hashchange", route);
+  darkQuery.addEventListener("change", applyTheme);
+  new ResizeObserver(() => {
+    if (prefs.layout === "timeline") declutter(boardMain);
+  }).observe(boardMain);
+  window.setInterval(applyTheme, 60_000);
+  applyTheme();
   document.addEventListener("visibilitychange", () => {
     const visible = document.visibilityState === "visible";
     controller.setVisible(visible);

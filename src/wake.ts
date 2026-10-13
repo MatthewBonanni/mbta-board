@@ -1,6 +1,4 @@
-import type { Store } from "./config";
-
-const DEVICE_KEY = "mbta-departure-board:device:v1";
+import type { DevicePrefs } from "./prefs";
 
 interface WakeLockSentinelLike extends EventTarget {
   released: boolean;
@@ -16,8 +14,11 @@ export class WakeLockManager {
   status: WakeStatus = "off";
   onChange: () => void = () => {};
 
-  constructor(private readonly store: Store | null) {
-    this.wanted = this.readPref();
+  constructor(
+    private readonly prefs: () => DevicePrefs,
+    private readonly savePrefs: (p: DevicePrefs) => void,
+  ) {
+    this.wanted = prefs().keepAwake;
     if (!this.supported) this.status = "unsupported";
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && this.wanted) void this.acquire();
@@ -34,26 +35,13 @@ export class WakeLockManager {
 
   async setEnabled(on: boolean): Promise<void> {
     this.wanted = on;
-    try {
-      this.store?.setItem(DEVICE_KEY, JSON.stringify({ keepAwake: on }));
-    } catch {
-      /* preference lasts for this session only */
-    }
+    this.savePrefs({ ...this.prefs(), keepAwake: on });
     if (on) await this.acquire();
     else await this.releaseLock();
   }
 
   async start(): Promise<void> {
     if (this.wanted) await this.acquire();
-  }
-
-  private readPref(): boolean {
-    try {
-      const raw = this.store?.getItem(DEVICE_KEY);
-      return raw ? JSON.parse(raw).keepAwake === true : false;
-    } catch {
-      return false;
-    }
   }
 
   private set(status: WakeStatus): void {

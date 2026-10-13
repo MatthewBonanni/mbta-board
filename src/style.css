@@ -7,6 +7,16 @@
   --yellow: #ffc72c;
   --focus: #005ea8;
   --paper: #ffffff;
+  --band: #161616;
+  --on-band: #ffffff;
+  --inverse-bg: var(--ink);
+  --inverse-fg: var(--paper);
+  --alert-bg: var(--ink);
+  --alert-fg: var(--yellow);
+  --on-yellow: #161616;
+  --danger: #a3170d;
+  --warn-bg: #fff6d6;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23161616' stroke-width='2'/%3E%3C/svg%3E");
 
   --t-next: 2.75rem;
   --t-later: 1.5rem;
@@ -30,6 +40,22 @@
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #111110;
+  --ink: #ecece6;
+  --ink-2: #a8a8a0;
+  --rule: #3d3d39;
+  --paper: #1b1b19;
+  --focus: #6cb4ff;
+  --band: #000000;
+  --alert-bg: var(--yellow);
+  --alert-fg: #161616;
+  --danger: #ff8a7a;
+  --warn-bg: #352d0c;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23ecece6' stroke-width='2'/%3E%3C/svg%3E");
 }
 
 @media (max-width: 40rem) {
@@ -112,8 +138,8 @@ a {
   padding-top: max(var(--s2), env(safe-area-inset-top));
   padding-left: max(var(--gutter), env(safe-area-inset-left));
   padding-right: max(var(--gutter), env(safe-area-inset-right));
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--band);
+  color: var(--on-band);
   min-height: 60px;
 }
 
@@ -180,7 +206,7 @@ a {
 
 .freshness[data-state="stale"] {
   background: var(--yellow);
-  color: var(--ink);
+  color: var(--on-yellow);
 }
 
 .freshness[data-state="stale"] .fresh-mark {
@@ -219,8 +245,8 @@ a {
 }
 
 .btn-primary {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--inverse-bg);
+  color: var(--inverse-fg);
 }
 
 .btn-primary:disabled {
@@ -236,7 +262,7 @@ a {
 }
 
 .btn-danger {
-  color: #a3170d;
+  color: var(--danger);
 }
 
 .btn-icon {
@@ -247,12 +273,12 @@ a {
 
 .btn-band {
   background: transparent;
-  color: var(--paper);
+  color: var(--on-band);
   border-color: #6d6d68;
 }
 
 .btn-band:focus-visible {
-  outline-color: var(--paper);
+  outline-color: var(--on-band);
 }
 
 .file-btn {
@@ -284,7 +310,7 @@ a {
 
 .notice-warn {
   border-left-color: var(--yellow);
-  background: #fff6d6;
+  background: var(--warn-bg);
 }
 
 .notice-demo {
@@ -405,8 +431,8 @@ a {
 }
 
 .leave-urgent .leave-lead {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--inverse-bg);
+  color: var(--inverse-fg);
   padding: 0 var(--s1);
 }
 
@@ -503,7 +529,7 @@ a {
   margin-left: var(--s2);
   padding: 0 var(--s1);
   background: var(--yellow);
-  color: var(--ink);
+  color: var(--on-yellow);
   font-size: var(--t-meta);
   font-weight: 700;
   vertical-align: 2px;
@@ -566,8 +592,8 @@ a {
 
 .alert-tag {
   flex: none;
-  background: var(--ink);
-  color: var(--yellow);
+  background: var(--alert-bg);
+  color: var(--alert-fg);
   font-weight: 700;
   font-size: 0.8125rem;
   letter-spacing: 0.06em;
@@ -631,36 +657,7 @@ a {
     text-align: left;
   }
 
-  /* Walk-time markers: struck through when unreachable on foot, underlined when it's the one to leave for. */
-.t-missed .t-main {
-  color: var(--ink-2);
-  text-decoration: line-through;
-  text-decoration-thickness: 2px;
-}
-
-.t-next.t-missed .t-val {
-  font-size: var(--t-later);
-}
-
-.t-missed .t-val {
-  font-weight: 400;
-}
-
-.t-target .t-main {
-  position: relative;
-}
-
-.t-target .t-main::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -6px;
-  height: 4px;
-  background: var(--ink);
-}
-
-.row-alerts {
+  .row-alerts {
     grid-column: 2 / -1;
   }
 }
@@ -685,6 +682,245 @@ a {
 .empty .muted {
   margin-top: var(--s4);
   font-size: var(--t-meta);
+}
+
+/* ---------- Next-leave banner ---------- */
+
+.next-leave {
+  column-span: all;
+  margin-bottom: var(--s6);
+  padding-top: var(--s3);
+  border-top: 8px solid var(--ink);
+}
+
+.nl-lead {
+  font-size: var(--t-next);
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.next-leave-urgent .nl-lead {
+  display: inline-block;
+  background: var(--inverse-bg);
+  color: var(--inverse-fg);
+  padding: 0 var(--s2);
+}
+
+.nl-what {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s3);
+  margin-top: var(--s3);
+  font-size: var(--t-row);
+}
+
+.nl-dest {
+  font-weight: 700;
+}
+
+.nl-place {
+  color: var(--ink-2);
+}
+
+.nl-detail {
+  margin-top: var(--s1);
+  color: var(--ink-2);
+  font-size: var(--t-meta);
+}
+
+/* ---------- Service alert strip ---------- */
+
+.status-box {
+  padding: 0 var(--gutter);
+  padding-left: max(var(--gutter), env(safe-area-inset-left));
+  padding-right: max(var(--gutter), env(safe-area-inset-right));
+}
+
+.status-box:empty {
+  display: none;
+}
+
+.status-strip {
+  margin-top: var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+}
+
+.status-strip .alert-toggle {
+  min-height: 40px;
+}
+
+.status-quiet {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  font-size: var(--t-meta);
+  color: var(--ink-2);
+}
+
+/* ---------- Timeline layout ---------- */
+
+.board[data-layout="timeline"] {
+  columns: 1 !important;
+}
+
+.row-timeline {
+  grid-template-columns: 4.5rem minmax(7rem, 12rem) minmax(0, 1fr);
+  grid-template-areas:
+    "badge dest lane"
+    ". leave leave"
+    ". alerts alerts";
+}
+
+.axis {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(7rem, 12rem) minmax(0, 1fr);
+  column-gap: var(--s4);
+  margin-top: var(--s1);
+}
+
+.axis-track {
+  grid-column: 3;
+  position: relative;
+  height: 1.25rem;
+  font-size: var(--t-meta);
+  color: var(--ink-2);
+}
+
+.axis-mark {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.axis-mark:first-child {
+  transform: none;
+}
+
+.axis-mark:last-child {
+  transform: translateX(-100%);
+}
+
+.lane {
+  grid-area: lane;
+  min-width: 0;
+}
+
+.lane-track {
+  position: relative;
+  display: block;
+  height: 3.5rem;
+  border-left: 3px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+}
+
+.lane-walk {
+  position: absolute;
+  bottom: 0;
+  height: 8px;
+  background: var(--ink-2);
+}
+
+.tick {
+  position: absolute;
+  bottom: 0;
+  width: 4px;
+  height: 1.25rem;
+  margin-left: -2px;
+  background: var(--ink);
+}
+
+.tick-label {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--t-later);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tick-start .tick-label {
+  left: 8px;
+  transform: none;
+}
+
+.tick-end .tick-label {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.tick-scheduled {
+  background: transparent;
+  border: 2px solid var(--ink);
+}
+
+.tick-scheduled .tick-label,
+.tick-last-known .tick-label {
+  font-weight: 400;
+  font-size: var(--t-meta);
+}
+
+.tick-last-known {
+  background: var(--ink-2);
+}
+
+.tick-missed {
+  height: 0.75rem;
+  background: var(--ink-2);
+}
+
+.tick-missed .tick-label {
+  color: var(--ink-2);
+  font-weight: 400;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.tick-target {
+  height: 1.75rem;
+  width: 6px;
+  margin-left: -3px;
+}
+
+.tick-target .tick-label {
+  bottom: 2rem;
+}
+
+.is-crowded {
+  visibility: hidden;
+}
+
+.lane-beyond {
+  position: absolute;
+  right: 0;
+  bottom: var(--s2);
+  font-size: var(--t-meta);
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+@container stop (max-width: 31rem) {
+  .row-timeline {
+    grid-template-columns: 4rem minmax(0, 1fr);
+    grid-template-areas:
+      "badge dest"
+      "lane lane"
+      "leave leave"
+      "alerts alerts";
+  }
+
+  .axis {
+    grid-template-columns: 1fr;
+  }
+
+  .axis-track {
+    grid-column: 1;
+  }
 }
 
 /* ---------- Settings ---------- */
@@ -753,7 +989,7 @@ textarea {
 }
 
 select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23161616' stroke-width='2'/%3E%3C/svg%3E");
+  background-image: var(--select-arrow);
   background-position: calc(100% - 14px) 50%;
   background-repeat: no-repeat;
   padding-right: 36px;
@@ -827,6 +1063,10 @@ input[type="number"] {
   border-radius: 0;
   background: var(--paper);
   color: var(--ink);
+}
+
+.choice-hint {
+  margin: calc(var(--s1) * -1) 0 0 36px;
 }
 
 .search-controls {
