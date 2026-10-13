@@ -477,6 +477,7 @@ a {
 }
 
 .t-head {
+  margin-top: 8px;
   font-size: var(--t-meta);
   color: var(--ink-2);
   white-space: nowrap;
@@ -526,7 +527,7 @@ a {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -7px;
+  bottom: -6px;
   height: 4px;
   background: var(--ink);
 }
@@ -641,7 +642,7 @@ a {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -7px;
+  bottom: -6px;
   height: 4px;
   background: var(--ink);
 }
