@@ -9,6 +9,7 @@ import { BOSTON, isDark } from "./sun";
 import { formatClock } from "./time";
 import { declutter, renderNextLeave, renderSections, renderStatus } from "./ui/board";
 import { announce, h, replaceKeepingFocus } from "./ui/dom";
+import { clearFit, fitToScreen } from "./ui/fit";
 import { mountSettings } from "./ui/settings";
 import { buildBoardView, type Freshness, type Lookup } from "./view";
 import { WakeLockManager } from "./wake";
@@ -62,33 +63,29 @@ const openAlerts = new Set<string>();
 const liveRegion = h("p", { class: "visually-hidden", role: "status", "aria-live": "polite" });
 let lastFreshness: Freshness | null = null;
 let lastSignature = "";
+let lastBanners = "";
 
 const clock = h("time", { class: "clock" });
 const freshnessEl = h("p", { class: "freshness" });
 const boardMain = h("main", { class: "board", id: "main" });
 const banners = h("div", { class: "banners" });
 const statusBox = h("div", { class: "status-box" });
+const fitBox = h("div", { class: "board-fit" }, banners, statusBox, boardMain);
+const masthead = h("header", { class: "masthead" });
 
 function settingsButton(): HTMLElement {
   return h("a", { href: "#settings", class: "btn btn-band", "aria-label": "Settings" }, "Settings");
 }
 
 function boardShell(): void {
-  app.replaceChildren(
-    h(
-      "header",
-      { class: "masthead" },
-      h("img", { class: "mark", src: `${import.meta.env.BASE_URL}icons/mark.svg`, alt: "", width: 28, height: 28 }),
-      h("h1", { class: "masthead-title" }, config.title),
-      clock,
-      freshnessEl,
-      settingsButton(),
-    ),
-    banners,
-    statusBox,
-    boardMain,
-    liveRegion,
+  masthead.replaceChildren(
+    h("img", { class: "mark", src: `${import.meta.env.BASE_URL}icons/mark.svg`, alt: "", width: 28, height: 28 }),
+    h("h1", { class: "masthead-title" }, config.title),
+    clock,
+    freshnessEl,
+    settingsButton(),
   );
+  app.replaceChildren(masthead, fitBox, liveRegion);
   lastSignature = "";
   renderBoard();
 }
@@ -119,6 +116,9 @@ function renderBoard(): void {
     storageWarning ? h("p", { class: "notice notice-warn" }, storageWarning) : null,
     view.alertsStale ? h("p", { class: "notice" }, "Service alerts may be out of date.") : null,
   ].filter((x): x is HTMLParagraphElement => x !== null);
+  const bannerText = bannerItems.map((b) => b.textContent).join("|");
+  const bannersChanged = bannerText !== lastBanners;
+  lastBanners = bannerText;
   banners.replaceChildren(...bannerItems);
 
   // Rebuild rows only when something visible changed, so focus and screen readers aren't disturbed every tick.
@@ -126,7 +126,8 @@ function renderBoard(): void {
   const nextLeave = prefs.nextLeave ? view.nextLeave : null;
   const signature = JSON.stringify([view.sections, [...openAlerts], prefs, nextLeave, showStatus ? view.status : null]);
   if (signature === lastSignature) {
-    if (prefs.layout === "timeline") declutter(boardMain);
+    if (bannersChanged) refit();
+    else if (prefs.layout === "timeline") declutter(boardMain);
     return;
   }
   lastSignature = signature;
@@ -134,6 +135,7 @@ function renderBoard(): void {
   boardMain.classList.toggle("is-empty", !config.groups.length);
   if (!config.groups.length) {
     statusBox.replaceChildren();
+    clearFit(fitBox);
     replaceKeepingFocus(
       boardMain,
       h(
@@ -168,6 +170,19 @@ function renderBoard(): void {
   replaceKeepingFocus(statusBox, showStatus ? renderStatus(view.status, opts) : null);
   boardMain.dataset.layout = prefs.layout;
   replaceKeepingFocus(boardMain, nextLeave ? renderNextLeave(nextLeave) : null, ...renderSections(view, opts), credit);
+  refit();
+}
+
+let fittedSize = "";
+
+function refit(): void {
+  if (location.hash === "#settings") return;
+  fittedSize = `${window.innerWidth}x${window.innerHeight}`;
+  if (prefs.fitScreen && config.groups.length) {
+    fitToScreen(fitBox);
+  } else {
+    clearFit(fitBox);
+  }
   if (prefs.layout === "timeline") declutter(boardMain);
 }
 
@@ -181,6 +196,7 @@ function commit(next: BoardConfig): void {
 
 function route(): void {
   if (location.hash === "#settings") {
+    clearFit(fitBox);
     mountSettings(app, {
       getConfig: () => config,
       commit,
@@ -228,9 +244,13 @@ async function init(): Promise<void> {
 
   window.addEventListener("hashchange", route);
   darkQuery.addEventListener("change", applyTheme);
-  new ResizeObserver(() => {
-    if (prefs.layout === "timeline") declutter(boardMain);
-  }).observe(boardMain);
+  let resizeTimer = 0;
+  const onResize = () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(refit, 150);
+  };
+  window.addEventListener("resize", onResize);
+  window.visualViewport?.addEventListener("resize", onResize);
   window.setInterval(applyTheme, 60_000);
   applyTheme();
   document.addEventListener("visibilitychange", () => {
@@ -241,8 +261,14 @@ async function init(): Promise<void> {
   window.addEventListener("online", () => controller.onOnline());
   window.addEventListener("offline", () => renderBoard());
   window.setInterval(() => {
-    if (document.visibilityState === "visible" && location.hash !== "#settings") renderBoard();
+    if (document.visibilityState !== "visible" || location.hash === "#settings") return;
+    renderBoard();
+    if (fittedSize !== `${window.innerWidth}x${window.innerHeight}`) refit();
   }, 5_000);
+  // Backstop for rotations or window changes that don't fire a resize event.
+  new ResizeObserver(() => {
+    if (fittedSize && fittedSize !== `${window.innerWidth}x${window.innerHeight}`) onResize();
+  }).observe(document.documentElement);
 
   route();
   void wake.start();

@@ -649,6 +649,7 @@ a {
 }
 
 .alert-summary {
+  flex: 1 1 8rem;
   min-width: 0;
   overflow-wrap: anywhere;
   text-decoration: underline;
@@ -801,7 +802,7 @@ a {
 /* ---------- Timeline layout ---------- */
 
 .board[data-layout="timeline"] {
-  columns: 1 !important;
+  columns: 1;
 }
 
 .row-timeline {
@@ -850,7 +851,7 @@ a {
 .lane-track {
   position: relative;
   display: block;
-  height: 3.5rem;
+  height: 3.75rem;
   border-left: 3px solid var(--ink);
   border-bottom: 2px solid var(--ink);
 }
@@ -960,6 +961,75 @@ a {
   .axis-track {
     grid-column: 1;
   }
+}
+
+/* ---------- Fit to screen ---------- */
+
+/* The fitted board never scrolls, including iOS rubber-band overscroll. */
+html.no-scroll,
+html.no-scroll body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.board-fit[data-columns="1"] .board:not(.is-empty) {
+  columns: 1;
+}
+
+.board-fit[data-columns="2"] .board:not(.is-empty) {
+  columns: 2;
+}
+
+html.fit-compact {
+  --row-pad: 4px;
+  --section-gap: var(--s4);
+}
+
+html.fit-compact .board {
+  padding-top: var(--s3);
+  padding-bottom: var(--s2);
+}
+
+html.fit-compact .badge {
+  min-height: 2.25rem;
+}
+
+html.fit-compact .stop-head {
+  padding-top: var(--s1);
+  padding-bottom: 2px;
+}
+
+html.fit-compact .stop-side .stop-head {
+  padding-top: var(--s2);
+}
+
+html.fit-compact .t-prefix:empty {
+  display: none;
+}
+
+html.fit-compact .leave {
+  margin-top: 10px;
+}
+
+html.fit-compact .street-band {
+  min-height: 1.375rem;
+  margin: var(--s1) 0 0;
+}
+
+html.fit-compact .alert-toggle {
+  min-height: 32px;
+  padding: 0;
+}
+
+html.fit-compact .next-leave {
+  margin-bottom: var(--s4);
+  padding-top: var(--s1);
+}
+
+html.fit-compact .notice {
+  margin-top: var(--s2);
+  padding: var(--s1) var(--s2);
 }
 
 /* ---------- Settings ---------- */

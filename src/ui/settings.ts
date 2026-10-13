@@ -928,7 +928,7 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
           ),
         ),
       );
-    const check = (key: "nextLeave" | "statusStrip", text: string, hint: string) =>
+    const check = (key: "nextLeave" | "statusStrip" | "fitScreen", text: string, hint: string) =>
       h(
         "div",
         { class: "field" },
@@ -952,6 +952,7 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
         ["list", "List: next three times per row"],
         ["timeline", "Timeline: departures over the next 45 minutes"],
       ]),
+      check("fitScreen", "Fit board to screen, no scrolling", "Tightens spacing, then shrinks the board so every row is visible. The board page doesn’t scroll."),
       check("nextLeave", "Next-leave banner", "A large line at the top naming the departure you need to leave for soonest. Needs a starting point."),
       check("statusStrip", "Service alert strip", "One strip under the header listing alerts by route, instead of an alert line on each row."),
       h(
