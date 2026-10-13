@@ -31,12 +31,21 @@ export interface AlertView {
   description: string;
 }
 
+/** Time to leave the starting point; deliberately phrased and placed apart from departure times. */
+export interface LeaveView {
+  lead: string;
+  detail: string;
+  label: string;
+  urgent: boolean;
+}
+
 export interface RowView {
   groupId: string;
   badge: { text: string; background: string; color: string; mode: string };
   destination: string;
   times: TimeView[];
   message: string | null;
+  leave: LeaveView | null;
   alerts: AlertView[];
 }
 
@@ -122,6 +131,43 @@ function timeView(d: Departure, now: number, stale: boolean, showHeadsign: boole
   };
 }
 
+const LEAVE_GRACE_MS = 30_000;
+
+export function leaveView(
+  departures: Departure[],
+  walkMinutes: number | undefined,
+  now: number,
+  stale: boolean,
+  showHeadsign: boolean,
+): LeaveView | null {
+  if (walkMinutes === undefined || !departures.length) return null;
+  const walk = `${walkMinutes} min walk`;
+  const walkMs = walkMinutes * 60_000;
+  const d = departures.find((x) => x.time - walkMs >= now - LEAVE_GRACE_MS);
+  if (!d) {
+    return { lead: "Too late for listed departures", detail: walk, label: `Too late to walk to the listed departures, ${walkMinutes} minute walk`, urgent: false };
+  }
+  const leaveAt = d.time - walkMs;
+  const toward = showHeadsign && d.headsign ? ` to ${d.headsign}` : "";
+  const dep = `${d.kind === "scheduled" ? "est. " : ""}${formatClock(d.time)}${toward}`;
+  const extras = [stale ? "last known" : null, `for the ${dep}`, walk, d.kind === "approx" ? "bus may be delayed" : null];
+  const detail = extras.filter(Boolean).join(" · ");
+  let lead: string;
+  let mins = Infinity;
+  if (stale || d.kind === "scheduled") {
+    lead = `Leave by ${formatClock(leaveAt)}`;
+  } else {
+    mins = Math.max(0, Math.floor((leaveAt - now) / 60_000));
+    lead = mins === 0 ? "Leave now" : mins < 60 ? `Leave in ${mins} min` : `Leave by ${formatClock(leaveAt)}`;
+  }
+  return {
+    lead,
+    detail,
+    label: `${lead}, to catch the ${dep} departure, ${walkMinutes} minute walk${stale ? ", based on last known times" : ""}`,
+    urgent: mins <= 2,
+  };
+}
+
 function rowView(
   g: DepartureGroup,
   lookup: Lookup,
@@ -160,6 +206,9 @@ function rowView(
     destination,
     times: upcoming.map((d, i) => timeView(d, now, stale, mixed && !g.destinationFilter, i === 0)),
     message,
+    leave: upcoming.length
+      ? leaveView(all.filter((d) => d.time >= now - LEAVE_GRACE_MS), g.walkMinutes, now, stale, mixed && !g.destinationFilter)
+      : null,
     alerts,
   };
 }

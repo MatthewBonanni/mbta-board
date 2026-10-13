@@ -28,6 +28,7 @@ class MemoryStore implements Store {
 const board = (): BoardConfig => ({
   ...emptyConfig(),
   title: "Home",
+  origin: { label: "Somewhere", lat: 42.36, lon: -71.06 },
   groups: [
     { ...group({ id: "a", routeId: "Red", stopId: "place-pktrm", resolvedStopIds: ["70075", "70076"], directionId: 0 }), displayLabel: "Park", destinationFilter: "Ashmont", order: 0 },
     { ...group({ id: "b", routeId: "39", stopId: "1001", directionId: 1 }), order: 1, walkMinutes: 4 },
@@ -54,6 +55,7 @@ describe("configuration", () => {
     const badId = structuredClone(ok);
     badId.groups[0].stopId = "<img src=x>";
     expect(() => parseImport(JSON.stringify(badId), emptyConfig())).toThrow(/stopId/);
+    expect(() => parseImport(JSON.stringify({ ...ok, origin: { label: "x", lat: 120, lon: 0 } }), emptyConfig())).toThrow(/latitude/);
     const longLabel = structuredClone(ok);
     longLabel.groups[0].displayLabel = "x".repeat(61);
     expect(() => parseImport(JSON.stringify(longLabel), emptyConfig())).toThrow(/longer than/);

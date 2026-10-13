@@ -37,6 +37,15 @@ function row(r: RowView, opts: BoardRenderOptions): HTMLElement {
     r.message
       ? h("span", { class: "row-msg" }, r.message)
       : h("span", { class: "times" }, timeCell(next!, true), ...later.map((t) => timeCell(t, false))),
+    r.leave
+      ? h(
+          "p",
+          { class: "leave" + (r.leave.urgent ? " leave-urgent" : "") },
+          h("span", { class: "visually-hidden" }, r.leave.label),
+          h("span", { class: "leave-lead", "aria-hidden": "true" }, r.leave.lead),
+          h("span", { class: "leave-detail", "aria-hidden": "true" }, r.leave.detail),
+        )
+      : null,
     r.alerts.length
       ? h(
           "div",

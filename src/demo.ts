@@ -69,11 +69,14 @@ const group = (stopId: string, routeId: string, directionId: 0 | 1, displayLabel
   ...(destinationFilter ? { destinationFilter } : {}),
 });
 
+const DEMO_WALK: Record<string, number> = { "demo-station": 6, "demo-101": 2, "demo-102": 3, "demo-201": 9 };
+
 function demoConfig(): BoardConfig {
   n = 0;
   return {
     ...emptyConfig(),
     title: "Demo board",
+    origin: { label: "Fictional starting point", lat: 0, lon: 0 },
     groups: [
       group("demo-station", "demo-red", 0, "Example Square", "Southfield"),
       group("demo-station", "demo-red", 0, "Example Square", "Easton"),
@@ -87,7 +90,7 @@ function demoConfig(): BoardConfig {
       group("demo-202", "demo-42", 0, "Cedar opposite Pine"),
       group("demo-202", "demo-58", 1, "Cedar opposite Pine"),
       group("demo-301", "demo-42", 1, ""),
-    ].map((g, i) => ({ ...g, order: i })),
+    ].map((g, i) => ({ ...g, order: i, ...(DEMO_WALK[g.stopId] !== undefined ? { walkMinutes: DEMO_WALK[g.stopId] } : {}) })),
   };
 }
 

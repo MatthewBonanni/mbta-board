@@ -3,6 +3,7 @@ import { RequestQueue } from "./api";
 import { browserStore, loadConfig, saveConfig, type BoardConfig } from "./config";
 import { BoardController, type ControllerState } from "./controller";
 import { Metadata } from "./metadata";
+import { OsmClient } from "./osm";
 import { formatClock } from "./time";
 import { renderSections } from "./ui/board";
 import { announce, h, replaceKeepingFocus } from "./ui/dom";
@@ -20,6 +21,7 @@ const queue = new RequestQueue();
 const metadata = new Metadata(queue, store);
 const controller = new BoardController(queue, metadata);
 const wake = new WakeLockManager(store);
+const osm = new OsmClient();
 
 interface DataSource {
   lookup: Lookup;
@@ -111,6 +113,14 @@ function renderBoard(): void {
     );
     return;
   }
+  const credit = config.origin
+    ? h(
+        "p",
+        { class: "board-credit" },
+        "Walk times: © ",
+        h("a", { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener" }, "OpenStreetMap contributors"),
+      )
+    : null;
   replaceKeepingFocus(
     boardMain,
     ...renderSections(view, {
@@ -121,6 +131,7 @@ function renderBoard(): void {
         renderBoard();
       },
     }),
+    credit,
   );
 }
 
@@ -138,6 +149,7 @@ function route(): void {
       getConfig: () => config,
       commit,
       metadata,
+      osm,
       wake,
       storageWarning: () => storageWarning,
       close: () => {

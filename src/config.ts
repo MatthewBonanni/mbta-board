@@ -17,11 +17,19 @@ export interface DepartureGroup {
   walkMinutes?: number;
 }
 
+/** Where the walk to each stop starts. Present only after the user chooses one. */
+export interface Origin {
+  label: string;
+  lat: number;
+  lon: number;
+}
+
 export interface BoardConfig {
   schemaVersion: typeof SCHEMA_VERSION;
   title: string;
   timezone: typeof TIMEZONE;
   density: Density;
+  origin?: Origin;
   groups: DepartureGroup[];
 }
 
@@ -32,6 +40,7 @@ export const LIMITS = {
   groups: 40,
   resolvedStops: 40,
   walkMinutes: 60,
+  originLabel: 120,
 };
 
 const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
@@ -98,6 +107,14 @@ function validateGroup(raw: unknown, index: number): DepartureGroup {
   return group;
 }
 
+function validateOrigin(raw: unknown): Origin {
+  if (!isObject(raw)) throw new ConfigError("origin must be an object");
+  const { lat, lon } = raw;
+  if (typeof lat !== "number" || !Number.isFinite(lat) || lat < -90 || lat > 90) throw new ConfigError("origin latitude is invalid");
+  if (typeof lon !== "number" || !Number.isFinite(lon) || lon < -180 || lon > 180) throw new ConfigError("origin longitude is invalid");
+  return { label: text(raw.label, "origin label", LIMITS.originLabel), lat, lon };
+}
+
 /** Older schema versions → current. Add an entry here when the schema changes. */
 const MIGRATIONS: Record<number, (raw: Record<string, unknown>) => Record<string, unknown>> = {};
 
@@ -141,6 +158,7 @@ export function validateConfig(input: unknown): BoardConfig {
     title: text(raw.title ?? "Departures", "title", LIMITS.title, false) || "Departures",
     timezone: TIMEZONE,
     density,
+    ...(raw.origin !== undefined ? { origin: validateOrigin(raw.origin) } : {}),
     groups,
   };
 }
@@ -186,7 +204,8 @@ export function mergeConfigs(existing: BoardConfig, incoming: BoardConfig): Boar
   const added = incoming.groups
     .filter((g) => !have.has(serviceKey(g)))
     .map((g) => (ids.has(g.id) ? { ...g, id: newGroupId() } : g));
-  const merged = { ...existing, groups: renumber([...existing.groups, ...added]) };
+  const merged: BoardConfig = { ...existing, groups: renumber([...existing.groups, ...added]) };
+  if (!merged.origin && incoming.origin) merged.origin = incoming.origin;
   if (merged.groups.length > LIMITS.groups) throw new ConfigError(`Merging would exceed ${LIMITS.groups} groups`);
   return merged;
 }

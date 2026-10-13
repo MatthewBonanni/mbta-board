@@ -22,7 +22,9 @@ import {
   type StopInfo,
   type StopServices,
 } from "../metadata";
+import { OsmError, parseCoordinates, type OsmClient, type Place } from "../osm";
 import { badgeTextColor } from "../view";
+import { applyWalks, estimateWalks } from "../walking";
 import type { WakeLockManager } from "../wake";
 import { h, replaceKeepingFocus } from "./dom";
 
@@ -30,6 +32,7 @@ export interface SettingsDeps {
   getConfig(): BoardConfig;
   commit(next: BoardConfig): void;
   metadata: Metadata;
+  osm: OsmClient;
   wake: WakeLockManager;
   storageWarning(): string | null;
   close(): void;
@@ -97,6 +100,7 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
   const resultsBox = h("div", { class: "results" });
   const wizardBox = h("div");
   const displayBox = h("div");
+  const originBox = h("div");
   const importBox = h("div");
   const statusRegion = h("p", { class: "visually-hidden", role: "status", "aria-live": "polite" });
 
@@ -194,7 +198,12 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
             h(
               "p",
               { class: "muted" },
-              [g.displayLabel ? `“${g.displayLabel}”` : null, stop?.name ?? null, `${stop?.locationType === 1 ? "Station" : "Stop"} ${g.stopId}`]
+              [
+                g.displayLabel ? `“${g.displayLabel}”` : null,
+                stop?.name ?? null,
+                `${stop?.locationType === 1 ? "Station" : "Stop"} ${g.stopId}`,
+                g.walkMinutes !== undefined ? `${g.walkMinutes} min walk` : null,
+              ]
                 .filter(Boolean)
                 .join(" · "),
             ),
@@ -207,11 +216,18 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
                 class: "label-edit",
                 onsubmit: (e: Event) => {
                   e.preventDefault();
-                  const input = (e.target as HTMLFormElement).elements.namedItem("label") as HTMLInputElement;
-                  const label = input.value.trim().slice(0, LIMITS.label);
+                  const form = e.target as HTMLFormElement;
+                  const label = (form.elements.namedItem("label") as HTMLInputElement).value.trim().slice(0, LIMITS.label);
+                  const walkRaw = (form.elements.namedItem("walk") as HTMLInputElement).value.trim();
+                  const walk = walkRaw === "" ? undefined : Math.round(Number(walkRaw));
+                  if (walk !== undefined && !(walk >= 0 && walk <= LIMITS.walkMinutes)) {
+                    statusRegion.textContent = `Walk time must be 0 to ${LIMITS.walkMinutes} minutes`;
+                    return;
+                  }
                   editing = null;
                   const next = deps.getConfig();
-                  commit({ ...next, groups: next.groups.map((x) => (x.id === g.id ? { ...x, displayLabel: label } : x)) });
+                  const relabelled = { ...next, groups: next.groups.map((x) => (x.id === g.id ? { ...x, displayLabel: label } : x)) };
+                  commit(applyWalks(relabelled, new Map([[g.stopId, walk]])));
                   groupsBox.querySelector<HTMLElement>(`[data-focus-key="edit-${g.id}"]`)?.focus();
                 },
               },
@@ -224,6 +240,18 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
                 value: g.displayLabel,
                 placeholder: stop?.name ?? "",
                 "data-focus-key": `label-${g.id}`,
+              }),
+              h("label", { for: `walk-${g.id}` }, "Walk from starting point (minutes, applies to every row at this stop; blank for none)"),
+              h("input", {
+                id: `walk-${g.id}`,
+                name: "walk",
+                type: "number",
+                inputmode: "numeric",
+                min: 0,
+                max: LIMITS.walkMinutes,
+                step: 1,
+                value: g.walkMinutes ?? "",
+                class: "input-short",
               }),
               h("button", { type: "submit", class: "btn" }, "Save"),
               h(
@@ -255,14 +283,14 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
               type: "button",
               class: "btn btn-quiet",
               "data-focus-key": `edit-${g.id}`,
-              "aria-label": `Edit heading label for ${title}`,
+              "aria-label": `Edit label and walk time for ${title}`,
               onclick: () => {
                 editing = g.id;
                 renderGroups();
                 groupsBox.querySelector<HTMLInputElement>(`#label-${CSS.escape(g.id)}`)?.focus();
               },
             },
-            "Label",
+            "Edit",
           ),
           h(
             "button",
@@ -661,8 +689,14 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
                   renderWizard();
                   return;
                 }
-                commit({ ...cfg, groups: renumber([...cfg.groups, ...toAdd.map((p) => p.group)]) });
+                const known = new Map(cfg.groups.filter((x) => x.walkMinutes !== undefined).map((x) => [x.stopId, x.walkMinutes]));
+                const added = toAdd.map((p) =>
+                  known.has(p.group.stopId) ? { ...p.group, walkMinutes: known.get(p.group.stopId) } : p.group,
+                );
+                commit({ ...cfg, groups: renumber([...cfg.groups, ...added]) });
                 statusRegion.textContent = `Added ${toAdd.length} row${toAdd.length === 1 ? "" : "s"} to the board`;
+                const unknown = added.filter((x) => x.walkMinutes === undefined).map((x) => x.stopId);
+                if (cfg.origin && unknown.length) void runEstimate(unknown);
                 resetWizard();
                 searchInput.focus();
               },
@@ -678,6 +712,180 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
   function resetWizard(): void {
     wizard = newWizard();
     renderWizard();
+  }
+
+  // ---------- Starting point and walking ----------
+  let originResults: Place[] | null = null;
+  let originStatus: string | null = null;
+  let originBusy = false;
+  let changingOrigin = false;
+
+  const originInput = h("input", {
+    id: "origin-search",
+    type: "search",
+    autocomplete: "off",
+    placeholder: "e.g. 100 Main St, Cambridge — or 42.3736, -71.1189",
+  });
+  const originForm = h(
+    "form",
+    {
+      class: "origin-form",
+      onsubmit: (e: Event) => {
+        e.preventDefault();
+        void findOrigin(originInput.value);
+      },
+    },
+    h("label", { for: "origin-search" }, "Address, place, or coordinates"),
+    h("div", { class: "inline-row" }, originInput, h("button", { type: "submit", class: "btn" }, "Find")),
+  );
+
+  async function findOrigin(text: string): Promise<void> {
+    const q = text.trim();
+    if (!q || originBusy) return;
+    const coords = parseCoordinates(q);
+    if (coords) {
+      await setOrigin({ label: `${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}`, detail: "", ...coords });
+      return;
+    }
+    originBusy = true;
+    originStatus = "Searching…";
+    originResults = null;
+    renderOrigin();
+    try {
+      originResults = await deps.osm.search(q);
+      originStatus = originResults.length ? null : "No matching places. Try adding the town, or paste coordinates.";
+    } catch (err) {
+      originStatus = errorText(err);
+    }
+    originBusy = false;
+    renderOrigin();
+  }
+
+  async function setOrigin(place: Place): Promise<void> {
+    const label = (place.detail ? `${place.label}, ${place.detail.split(", ")[0]}` : place.label).slice(0, LIMITS.originLabel);
+    commit({ ...deps.getConfig(), origin: { label, lat: place.lat, lon: place.lon } });
+    changingOrigin = false;
+    originResults = null;
+    originInput.value = "";
+    await runEstimate();
+  }
+
+  async function runEstimate(stopIds?: string[]): Promise<void> {
+    const cfg = deps.getConfig();
+    const origin = cfg.origin;
+    const ids = stopIds ?? cfg.groups.map((g) => g.stopId);
+    if (!origin || !ids.length) {
+      renderOrigin();
+      return;
+    }
+    originBusy = true;
+    originStatus = "Estimating walking times…";
+    renderOrigin();
+    try {
+      const est = await estimateWalks(origin, ids, metadata, deps.osm);
+      const current = deps.getConfig();
+      if (current.origin === origin) {
+        commit(applyWalks(current, est.minutes));
+        const name = (id: string) => metadata.stop(id)?.name ?? `stop ${id}`;
+        const parts = [
+          est.minutes.size ? `Set walk times for ${est.minutes.size} stop${est.minutes.size === 1 ? "" : "s"}.` : null,
+          est.tooFar.length ? `Over ${LIMITS.walkMinutes} min, not set: ${est.tooFar.map(name).join(", ")}.` : null,
+          est.failed.length ? `No walking route found: ${est.failed.map(name).join(", ")}.` : null,
+        ];
+        originStatus = parts.filter(Boolean).join(" ") || "Nothing to estimate.";
+      }
+    } catch (err) {
+      originStatus = `Could not estimate walking times: ${err instanceof OsmError ? err.message : errorText(err)}`;
+    }
+    originBusy = false;
+    renderOrigin();
+  }
+
+  function renderOrigin(): void {
+    const cfg = deps.getConfig();
+    const o = cfg.origin;
+    const showSearch = !o || changingOrigin;
+    replaceKeepingFocus(
+      originBox,
+      o
+        ? h(
+            "div",
+            { class: "origin-current" },
+            h("p", {}, h("strong", {}, "From: "), o.label),
+            h("p", { class: "muted" }, `${o.lat.toFixed(5)}, ${o.lon.toFixed(5)}`),
+            h(
+              "div",
+              { class: "actions" },
+              h(
+                "button",
+                { type: "button", class: "btn", disabled: originBusy || !cfg.groups.length, "data-focus-key": "re-estimate", onclick: () => void runEstimate() },
+                "Re-estimate all walk times",
+              ),
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: "btn btn-quiet",
+                  "data-focus-key": "change-origin",
+                  onclick: () => {
+                    changingOrigin = !changingOrigin;
+                    renderOrigin();
+                    if (changingOrigin) originInput.focus();
+                  },
+                },
+                changingOrigin ? "Keep this starting point" : "Change starting point",
+              ),
+              h(
+                "button",
+                {
+                  type: "button",
+                  class: "btn btn-quiet btn-danger",
+                  onclick: () => {
+                    if (!window.confirm("Remove the starting point and every walk time? Leave times will no longer show.")) return;
+                    const next = deps.getConfig();
+                    const { origin: _, ...rest } = next;
+                    commit(applyWalks(rest, new Map(next.groups.map((g) => [g.stopId, undefined]))));
+                    originStatus = "Starting point and walk times removed.";
+                    renderOrigin();
+                  },
+                },
+                "Remove",
+              ),
+            ),
+          )
+        : h("p", {}, "Set where you leave from to see when to leave for each departure. Walk times are estimated once and saved; you can edit any of them under Rows on the board."),
+      showSearch ? originForm : null,
+      showSearch && originResults?.length
+        ? h(
+            "ul",
+            { class: "result-list" },
+            ...originResults.map((p) =>
+              h(
+                "li",
+                {},
+                h(
+                  "button",
+                  { type: "button", class: "result", onclick: () => void setOrigin(p) },
+                  h("span", { class: "result-name" }, p.label),
+                  h("span", { class: "result-meta" }, p.detail),
+                ),
+              ),
+            ),
+          )
+        : null,
+      originStatus ? h("p", { class: "muted", role: "status" }, originStatus) : null,
+      h(
+        "p",
+        { class: "muted" },
+        "Searching sends what you type, and estimating sends the starting point and stop locations, to OpenStreetMap community services. Nothing is sent while the board runs. Addresses and walking routes © ",
+        h("a", { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener" }, "OpenStreetMap contributors"),
+        " (",
+        h("a", { href: "https://www.openstreetmap.org/fixthemap", target: "_blank", rel: "noopener" }, "fix the map"),
+        "); routing by ",
+        h("a", { href: "https://routing.openstreetmap.de/about.html", target: "_blank", rel: "noopener" }, "FOSSGIS"),
+        ".",
+      ),
+    );
   }
 
   // ---------- Display ----------
@@ -875,6 +1083,7 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
         resultsBox,
         wizardBox,
       ),
+      h("section", { class: "panel", "aria-labelledby": "s-origin" }, h("h2", { id: "s-origin" }, "Starting point and walking"), originBox),
       h("section", { class: "panel", "aria-labelledby": "s-display" }, h("h2", { id: "s-display" }, "This device"), displayBox),
       h(
         "section",
@@ -931,6 +1140,7 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
   renderBoardBox();
   renderGroups();
   renderDisplay();
+  renderOrigin();
   renderImport();
   void metadata
     .ensure(

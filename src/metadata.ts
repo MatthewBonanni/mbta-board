@@ -224,6 +224,18 @@ export class Metadata {
     return p;
   }
 
+  async coordinates(stopIds: string[]): Promise<{ id: string; lat: number; lon: number }[]> {
+    if (!stopIds.length) return [];
+    const doc = await this.queue.getAll(
+      query("/stops", { "filter[id]": [...new Set(stopIds)].join(","), "fields[stop]": "latitude,longitude" }),
+      0,
+    );
+    return doc.data.flatMap((r) => {
+      const { latitude: lat, longitude: lon } = r.attributes;
+      return typeof lat === "number" && typeof lon === "number" ? [{ id: r.id, lat, lon }] : [];
+    });
+  }
+
   async stopServices(stopId: string): Promise<StopServices> {
     const doc = await this.queue.getAll(
       query("/route_patterns", {

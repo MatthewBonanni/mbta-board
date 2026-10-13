@@ -321,6 +321,13 @@ a {
   }
 }
 
+.board-credit {
+  column-span: all;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+  text-align: right;
+}
+
 .stop {
   container: stop / inline-size;
   break-inside: avoid;
@@ -351,6 +358,7 @@ a {
   grid-template-columns: 4.5rem minmax(0, 1fr) auto;
   grid-template-areas:
     "badge dest times"
+    ". leave leave"
     ". alerts alerts";
   align-items: center;
   column-gap: var(--s4);
@@ -390,6 +398,36 @@ a {
   font-size: var(--t-row);
   font-weight: 700;
   line-height: 1.2;
+}
+
+/* "Leave" sits under the destination, not in the time columns, so it can't be read as a departure. */
+.leave {
+  grid-area: leave;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--s2);
+  margin-top: var(--s2);
+  padding-left: var(--s2);
+  border-left: 3px solid var(--ink);
+  font-weight: 400;
+}
+
+.leave-lead {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.leave-urgent .leave-lead {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0 var(--s1);
+}
+
+.leave-detail {
+  font-size: var(--t-meta);
+  color: var(--ink-2);
 }
 
 .times {
@@ -548,6 +586,7 @@ a {
     grid-template-areas:
       "badge dest"
       "badge times"
+      ". leave"
       "alerts alerts";
     row-gap: var(--s1);
   }
@@ -690,6 +729,53 @@ textarea {
   accent-color: var(--ink);
 }
 
+.inline-row {
+  display: flex;
+  gap: var(--s2);
+  max-width: 34rem;
+}
+
+.inline-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.origin-form label {
+  display: block;
+  font-weight: 700;
+  font-size: var(--t-meta);
+  margin: var(--s3) 0 var(--s1);
+}
+
+.origin-form + .muted,
+.origin-current + .muted,
+.result-list + .muted {
+  margin-top: var(--s3);
+}
+
+#main .panel p[role="status"] {
+  margin-bottom: var(--s2);
+}
+
+.origin-current {
+  margin-bottom: var(--s3);
+}
+
+.input-short {
+  max-width: 8rem;
+}
+
+input[type="number"] {
+  font: inherit;
+  font-size: 1.125rem;
+  min-height: 44px;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--ink-2);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
 .search-controls {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
@@ -697,7 +783,54 @@ textarea {
 }
 
 @media (max-width: 40rem) {
-  .search-controls {
+  .inline-row {
+  display: flex;
+  gap: var(--s2);
+  max-width: 34rem;
+}
+
+.inline-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.origin-form label {
+  display: block;
+  font-weight: 700;
+  font-size: var(--t-meta);
+  margin: var(--s3) 0 var(--s1);
+}
+
+.origin-form + .muted,
+.origin-current + .muted,
+.result-list + .muted {
+  margin-top: var(--s3);
+}
+
+#main .panel p[role="status"] {
+  margin-bottom: var(--s2);
+}
+
+.origin-current {
+  margin-bottom: var(--s3);
+}
+
+.input-short {
+  max-width: 8rem;
+}
+
+input[type="number"] {
+  font: inherit;
+  font-size: 1.125rem;
+  min-height: 44px;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--ink-2);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.search-controls {
     grid-template-columns: 1fr;
   }
 }

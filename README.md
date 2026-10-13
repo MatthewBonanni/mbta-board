@@ -20,6 +20,23 @@ Unofficial personal departure board • Data from MBTA.
 Rows can be relabelled, reordered (↑/↓), or removed in Settings. Adjacent rows
 with the same label share a heading.
 
+### Leave times
+
+Under **Starting point and walking**, search an address or place (press Find)
+or paste coordinates like `42.3736, -71.1189`. The app estimates the walk to
+every stop once, using free OpenStreetMap services, and saves the minutes. Edit
+any stop's walk time under **Edit** in the row list; re-estimating overwrites
+them. Each row then shows a separate line such as `Leave in 6 min — for the
+1:42 PM · 5 min walk`, aimed at the first departure you can still reach.
+Schedule estimates and stale data show `Leave by <clock time>` instead of a
+countdown.
+
+Searching sends what you type, and estimating sends the starting point and stop
+locations, to [Nominatim](https://nominatim.org/) and the
+[FOSSGIS routing server](https://routing.openstreetmap.de/about.html). Nothing
+is sent while the board runs. The starting point is saved in the backup file.
+Map data © OpenStreetMap contributors.
+
 ### Reading the board
 
 | Shows | Meaning |
@@ -30,6 +47,7 @@ with the same label share a heading.
 | `Last known 4:32 PM` | Updates have failed; old times kept as clock times, not countdowns |
 | `No predictions right now` | The MBTA answered with nothing usable; not proof that service ended |
 | `No service — see alert` | Only when an active alert for that service says so |
+| `Leave in 6 min` (under a row) | When to leave the starting point; the departure it targets is named beside it |
 
 The header shows **Live** with the update age, or **Not live** with the last
 successful update and the reason. Live ends immediately on a failed refresh and
@@ -84,6 +102,7 @@ npm run preview    # serves dist/ under /mbta-board/
 | `src/metadata.ts` | Routes, stops, stop search index, services at a stop (cached) |
 | `src/normalize.ts` | Predictions → departures: exact tuple filter, dedupe, uncertainty semantics |
 | `src/alerts.ts` | Alert parsing and matching to configured services |
+| `src/osm.ts`, `src/walking.ts` | Address search and walking times (OpenStreetMap, throttled to 1 request/s, user-triggered only) |
 | `src/controller.ts` | Polling: batched predictions every 30 s, alerts every 90 s, visibility pause |
 | `src/view.ts` | Pure state → view model (freshness, labels, messages) |
 | `src/ui/` | Board and settings DOM rendering (text nodes only, never `innerHTML`) |
