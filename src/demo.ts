@@ -32,16 +32,16 @@ const ROUTES: Record<string, RouteInfo> = Object.fromEntries(
   ].map((r) => [r.id, r]),
 );
 
-const stop = (id: string, name: string, locationType = 0): StopInfo => ({
+const stop = (id: string, name: string, locationType = 0, street: [string, string] | null = null): StopInfo => ({
   id,
   name,
   locationType,
   parentId: null,
   platformName: null,
-  onStreet: null,
-  atStreet: null,
+  onStreet: street?.[0] ?? null,
+  atStreet: street?.[1] ?? null,
   municipality: "Exampleton",
-  vehicleType: null,
+  vehicleType: locationType === 0 ? 3 : null,
 });
 
 const STOPS: Record<string, StopInfo> = Object.fromEntries(
@@ -51,8 +51,8 @@ const STOPS: Record<string, StopInfo> = Object.fromEntries(
     stop("demo-nb", "Example Square"),
     stop("demo-101", "Main St @ Elm St"),
     stop("demo-102", "Main St opp Elm St"),
-    stop("demo-201", "Cedar Ave @ Pine St"),
-    stop("demo-202", "Cedar Ave opp Pine St"),
+    stop("demo-201", "Cedar Ave @ Pine St", 0, ["Cedar Avenue", "Pine Street"]),
+    stop("demo-202", "Cedar Ave opp Pine St", 0, ["Cedar Avenue", "Pine Street"]),
     stop("demo-301", "Harbor Rd @ Dock St"),
   ].map((s) => [s.id, s]),
 );

@@ -100,6 +100,14 @@ export interface SectionView {
   /** Official stop name when a custom label replaces it, and a shared walk time. */
   meta: string | null;
   rows: RowView[];
+  /** Set when this section is one side of a street corner shared with its neighbour. */
+  corner: CornerView | null;
+}
+
+export interface CornerView {
+  key: string;
+  heading: string;
+  street: string;
 }
 
 export interface BoardView {
@@ -402,7 +410,15 @@ export function buildBoardView(config: BoardConfig, lookup: Lookup, state: Contr
       heading: first.displayLabel || official || `Stop ${first.stopId}`,
       meta: meta.length ? meta.join(" · ") : null,
       rows: groups.map((g) => rowView(g, lookup, state, freshness, now, sharedWalk === undefined)),
+      corner: cornerOf(groups, lookup),
     };
+  });
+  // Only adjacent sections at the same corner are shown together; a lone section keeps its normal heading.
+  sections.forEach((s, i) => {
+    if (!s.corner) return;
+    const prev = sections[i - 1]?.corner?.key;
+    const next = sections[i + 1]?.corner?.key;
+    if (prev !== s.corner.key && next !== s.corner.key) s.corner = null;
   });
   const nextLeave = pickNextLeave(sections);
   const status = statusView(config, lookup, state, now);
@@ -459,4 +475,36 @@ function statusView(config: BoardConfig, lookup: Lookup, state: ControllerState,
   }
   const items = [...byRoute.values()];
   return { withAlerts: items.filter((i) => i.alerts.length), quiet: items.filter((i) => !i.alerts.length) };
+}
+
+const STREET_ABBREVIATIONS: [RegExp, string][] = [
+  [/\bStreet\b/g, "St"],
+  [/\bAvenue\b/g, "Ave"],
+  [/\bRoad\b/g, "Rd"],
+  [/\bBoulevard\b/g, "Blvd"],
+  [/\bSquare\b/g, "Sq"],
+  [/\bPlace\b/g, "Pl"],
+  [/\bTerrace\b/g, "Ter"],
+  [/\bParkway\b/g, "Pkwy"],
+  [/\bHighway\b/g, "Hwy"],
+  [/\bDrive\b/g, "Dr"],
+  [/\bCourt\b/g, "Ct"],
+];
+
+export function shortStreet(name: string): string {
+  return STREET_ABBREVIATIONS.reduce((s, [re, abbr]) => s.replace(re, abbr), name);
+}
+
+/** Bus stops the MBTA lists on the same street at the same cross street are sides of one corner. */
+function cornerOf(groups: DepartureGroup[], lookup: Lookup): CornerView | null {
+  const stops = [...new Set(groups.map((g) => g.stopId))].map((id) => lookup.stop(id));
+  const first = stops[0];
+  if (!first?.onStreet || !first.atStreet) return null;
+  const same = stops.every((s) => s && s.locationType === 0 && s.vehicleType === 3 && s.onStreet === first.onStreet && s.atStreet === first.atStreet);
+  if (!same) return null;
+  return {
+    key: `${first.onStreet}|${first.atStreet}`,
+    heading: `${shortStreet(first.onStreet)} & ${shortStreet(first.atStreet)}`,
+    street: shortStreet(first.onStreet),
+  };
 }

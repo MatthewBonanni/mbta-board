@@ -16,6 +16,7 @@
   --on-yellow: #161616;
   --danger: #a3170d;
   --warn-bg: #fff6d6;
+  --street: #e6e5df;
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23161616' stroke-width='2'/%3E%3C/svg%3E");
 
   --t-next: 2.75rem;
@@ -55,6 +56,7 @@ html[data-theme="dark"] {
   --alert-fg: #161616;
   --danger: #ff8a7a;
   --warn-bg: #352d0c;
+  --street: #262624;
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23ecece6' stroke-width='2'/%3E%3C/svg%3E");
 }
 
@@ -355,10 +357,47 @@ a {
   padding-bottom: var(--s2);
 }
 
+.stop-head h2,
+.stop-head h3,
+.nl-lead,
+.nl-dest {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
 .stop-head h2 {
   font-size: var(--t-stop);
   font-weight: 700;
   line-height: 1.15;
+}
+
+/* Sides of a street corner: one heavy rule and heading, lighter side headings, the street between. */
+.stop-side {
+  padding-bottom: 0;
+}
+
+.stop-side .stop-head {
+  border-top: 0;
+  padding-top: var(--s3);
+}
+
+.stop-side .stop-head h3 {
+  font-size: var(--t-row);
+  font-weight: 700;
+}
+
+.street-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  margin: var(--s2) 0 var(--s1);
+  background: var(--street);
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .stop-meta {

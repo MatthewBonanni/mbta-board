@@ -140,18 +140,40 @@ function axis(): HTMLElement {
   );
 }
 
-function section(s: SectionView, opts: BoardRenderOptions): HTMLElement {
+function section(s: SectionView, opts: BoardRenderOptions, side = false): HTMLElement {
   return h(
     "section",
-    { class: "stop", "aria-label": s.heading },
-    h("div", { class: "stop-head" }, h("h2", {}, s.heading), s.meta ? h("p", { class: "stop-meta" }, s.meta) : null),
+    { class: side ? "stop stop-side" : "stop", "aria-label": s.heading },
+    h("div", { class: "stop-head" }, h(side ? "h3" : "h2", {}, s.heading), s.meta ? h("p", { class: "stop-meta" }, s.meta) : null),
     opts.layout === "timeline" ? axis() : null,
     h("ul", { class: "rows" }, ...s.rows.map((r) => row(r, opts))),
   );
 }
 
+/** Sides of one street corner share a heading, with the street drawn between them. */
+function corner(sides: SectionView[], opts: BoardRenderOptions): HTMLElement {
+  const c = sides[0]!.corner!;
+  return h(
+    "section",
+    { class: "stop stop-corner", "aria-label": `${c.heading}, both sides of ${c.street}` },
+    h("div", { class: "stop-head" }, h("h2", {}, c.heading)),
+    ...sides.flatMap((s, i) => [
+      i > 0 ? h("p", { class: "street-band", "aria-hidden": "true" }, h("span", {}, c.street)) : null,
+      section(s, opts, true),
+    ]).filter((n): n is HTMLElement => n !== null),
+  );
+}
+
 export function renderSections(view: BoardView, opts: BoardRenderOptions): Node[] {
-  return view.sections.map((s) => section(s, opts));
+  const out: Node[] = [];
+  for (let i = 0; i < view.sections.length; ) {
+    const s = view.sections[i]!;
+    let j = i + 1;
+    while (s.corner && view.sections[j]?.corner?.key === s.corner.key) j++;
+    out.push(j - i > 1 ? corner(view.sections.slice(i, j), opts) : section(s, opts));
+    i = j;
+  }
+  return out;
 }
 
 export function renderNextLeave(n: NextLeaveView): HTMLElement {
