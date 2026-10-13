@@ -92,3 +92,27 @@ describe("RequestQueue", () => {
     expect(await Promise.all(kinds)).toEqual(["malformed", "http", "timeout"]);
   });
 });
+
+describe("RequestQueue backoff after network errors", () => {
+  it("lets a user-initiated request skip a network-error wait but not a rate-limit wait", async () => {
+    let fail: "network" | "429" | null = "network";
+    const { queue, calls } = setup(() => {
+      if (fail === "network") throw new TypeError("Failed to fetch");
+      if (fail === "429") return jsonResponse({}, 429);
+      return jsonResponse({ data: [] });
+    }, { baseBackoffMs: 30_000 });
+    await Promise.all([queue.request("/a").catch(() => 0), advance(200)]);
+    fail = null;
+    const user = queue.request("/stops", 0);
+    await advance(300);
+    await user;
+    expect(calls).toHaveLength(2);
+
+    fail = "429";
+    await Promise.all([queue.request("/b").catch(() => 0), advance(200)]);
+    fail = null;
+    void queue.request("/routes", 0);
+    await advance(5_000);
+    expect(calls).toHaveLength(3);
+  });
+});

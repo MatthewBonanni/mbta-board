@@ -89,6 +89,8 @@ export class BoardController {
       this.clearTimers();
       return;
     }
+    // Failures while hidden usually mean the device slept; don't make the user wait them out.
+    this.queue.clearNetworkBackoff();
     if (this.running) this.refreshDue();
   }
 

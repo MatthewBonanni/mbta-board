@@ -35,6 +35,8 @@ export interface QueueOptions {
   timeoutMs?: number;
   baseBackoffMs?: number;
   maxBackoffMs?: number;
+  /** Network errors (offline, timeout) usually come from a sleeping device; retry sooner. */
+  maxNetworkBackoffMs?: number;
   online?: () => boolean;
 }
 
@@ -86,6 +88,7 @@ export class RequestQueue {
       timeoutMs: options.timeoutMs ?? 15_000,
       baseBackoffMs: options.baseBackoffMs ?? 5_000,
       maxBackoffMs: options.maxBackoffMs ?? 300_000,
+      maxNetworkBackoffMs: options.maxNetworkBackoffMs ?? 60_000,
       online: options.online ?? (() => (typeof navigator === "undefined" ? true : navigator.onLine)),
     };
   }
@@ -103,8 +106,12 @@ export class RequestQueue {
     }
   }
 
-  /** Identical pending requests share one network call. Lower priority numbers run first. */
+  /**
+   * Identical pending requests share one network call. Lower priority numbers run first.
+   * Priority 0 is user-initiated: it skips a leftover network-error wait (not a rate-limit wait).
+   */
   request(path: string, priority = 1): Promise<RawDocument> {
+    if (priority === 0) this.clearNetworkBackoff();
     const existing = this.jobs.find((j) => j.key === path);
     if (existing) {
       if (priority < existing.priority) {
@@ -243,7 +250,9 @@ export class RequestQueue {
     this.lastErrorKind = kind;
     if (err instanceof ApiError && err.kind === "http" && err.status !== undefined && err.status < 500) return;
     this.failures++;
-    const exp = Math.min(this.opts.maxBackoffMs, this.opts.baseBackoffMs * 2 ** (this.failures - 1));
+    const network = kind === "offline" || kind === "timeout";
+    const cap = network ? this.opts.maxNetworkBackoffMs : this.opts.maxBackoffMs;
+    const exp = Math.min(cap, this.opts.baseBackoffMs * 2 ** (this.failures - 1));
     let delay = exp * (0.5 + this.opts.random() * 0.5);
     const retryAfterMs = err instanceof ApiError ? err.retryAfterMs : undefined;
     if (retryAfterMs) delay = Math.max(delay, retryAfterMs);

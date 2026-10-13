@@ -317,6 +317,26 @@ export function mountSettings(root: HTMLElement, deps: SettingsDeps): void {
       groupsBox,
       h("p", { class: "muted" }, "Adjacent rows with the same heading label share one heading on the board."),
       h("ol", { class: "group-list" }, ...items),
+      h(
+        "div",
+        { class: "actions" },
+        h(
+          "button",
+          {
+            type: "button",
+            class: "btn btn-quiet btn-danger",
+            "data-focus-key": "remove-all",
+            onclick: () => {
+              const n = deps.getConfig().groups.length;
+              if (!window.confirm(`Remove all ${n} row${n === 1 ? "" : "s"} from the board? Export a backup first if you might want them back.`)) return;
+              commit({ ...deps.getConfig(), groups: [] });
+              statusRegion.textContent = "Removed every row from the board";
+              searchInput.focus();
+            },
+          },
+          "Remove all",
+        ),
+      ),
     );
   }
 
