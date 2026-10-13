@@ -9,7 +9,7 @@ export interface BoardRenderOptions {
 function timeCell(t: TimeView, primary: boolean): HTMLElement {
   return h(
     "span",
-    { class: `t ${primary ? "t-next" : "t-later"} t-${t.kind}` },
+    { class: `t ${primary ? "t-next" : "t-later"} t-${t.kind}${t.reach ? ` t-${t.reach}` : ""}` },
     h("span", { class: "visually-hidden" }, t.label),
     h("span", { class: "t-prefix", "aria-hidden": "true" }, t.prefix),
     h(

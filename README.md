@@ -26,8 +26,9 @@ Under **Starting point and walking**, search an address or place (press Find)
 or paste coordinates like `42.3736, -71.1189`. The app estimates the walk to
 every stop once, using free OpenStreetMap services, and saves the minutes. Edit
 any stop's walk time under **Edit** in the row list; re-estimating overwrites
-them. Each row then shows a separate line such as `Leave in 6 min — for the
-1:42 PM · 5 min walk`, aimed at the first departure you can still reach.
+them. Each row then shows a separate line such as `Leave in 5 min · catch the
+train in 11 min · 6 min walk`, aimed at the first departure you can still reach,
+which is underlined; departures you can't reach are struck through.
 Schedule estimates and stale data show `Leave by <clock time>` instead of a
 countdown.
 
@@ -47,7 +48,9 @@ Map data © OpenStreetMap contributors.
 | `Last known 4:32 PM` | Updates have failed; old times kept as clock times, not countdowns |
 | `No predictions right now` | The MBTA answered with nothing usable; not proof that service ended |
 | `No service — see alert` | Only when an active alert for that service says so |
-| `Leave in 6 min` (under a row) | When to leave the starting point; the departure it targets is named beside it |
+| `Leave in 6 min` (under a row) | When to leave the starting point, e.g. "catch the train in 11 min" |
+| Underlined time | The departure that leave time is for (always shown, even if it's not among the next three) |
+| ~~Struck-through time~~ | Leaves before you could walk there |
 
 The header shows **Live** with the update age, or **Not live** with the last
 successful update and the reason. Live ends immediately on a failed refresh and

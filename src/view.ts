@@ -22,6 +22,8 @@ export interface TimeView {
   /** Full text for assistive technology. */
   label: string;
   headsign: string | null;
+  /** With a walk time set: the departure the leave time targets, or one that can't be reached on foot. */
+  reach: "target" | "missed" | null;
 }
 
 export interface AlertView {
@@ -37,6 +39,7 @@ export interface LeaveView {
   detail: string;
   label: string;
   urgent: boolean;
+  targetKey: string | null;
 }
 
 export interface RowView {
@@ -101,7 +104,21 @@ export function badgeTextColor(background: string, preferred: string): string {
   return contrast(background, INK) >= contrast(background, WHITE) ? INK : WHITE;
 }
 
-function timeView(d: Departure, now: number, stale: boolean, showHeadsign: boolean, first: boolean): TimeView {
+function timeView(
+  d: Departure,
+  now: number,
+  stale: boolean,
+  showHeadsign: boolean,
+  first: boolean,
+  reach: TimeView["reach"] = null,
+): TimeView {
+  const base = timeViewBase(d, now, stale, showHeadsign, first);
+  if (reach === "missed") return { ...base, reach, label: `${base.label}, too soon to reach on foot` };
+  if (reach === "target") return { ...base, reach, label: `${base.label}, the one to leave for` };
+  return { ...base, reach };
+}
+
+function timeViewBase(d: Departure, now: number, stale: boolean, showHeadsign: boolean, first: boolean): Omit<TimeView, "reach"> {
   const headsign = showHeadsign ? d.headsign : null;
   const clock = clockParts(d.time);
   const at = formatClock(d.time);
@@ -133,25 +150,51 @@ function timeView(d: Departure, now: number, stale: boolean, showHeadsign: boole
 
 const LEAVE_GRACE_MS = 30_000;
 
+export function vehicleNoun(routeType: number | undefined): string {
+  if (routeType === 3) return "bus";
+  if (routeType === 4) return "boat";
+  if (routeType === 0 || routeType === 1 || routeType === 2) return "train";
+  return "departure";
+}
+
+export function canReach(d: Departure, walkMinutes: number, now: number): boolean {
+  return d.time - walkMinutes * 60_000 >= now - LEAVE_GRACE_MS;
+}
+
+/** Names the targeted departure the way its time is shown on the row, so the two can be matched by eye. */
+function describeTarget(d: Departure, noun: string, toward: string, now: number, stale: boolean): string {
+  const vehicle = `${noun}${toward}`;
+  if (stale) return `the ${formatClock(d.time)} ${vehicle}`;
+  if (d.kind === "scheduled") return `the est. ${formatClock(d.time)} ${vehicle}`;
+  const mins = minutesUntil(d.time, now);
+  if (mins >= 60) return `the ${formatClock(d.time)} ${vehicle}`;
+  return mins === 0 ? `the ${vehicle} due now` : `the ${vehicle} in ${mins} min`;
+}
+
 export function leaveView(
   departures: Departure[],
   walkMinutes: number | undefined,
   now: number,
   stale: boolean,
   showHeadsign: boolean,
+  noun = "departure",
 ): LeaveView | null {
   if (walkMinutes === undefined || !departures.length) return null;
   const walk = `${walkMinutes} min walk`;
-  const walkMs = walkMinutes * 60_000;
-  const d = departures.find((x) => x.time - walkMs >= now - LEAVE_GRACE_MS);
+  const d = departures.find((x) => canReach(x, walkMinutes, now));
   if (!d) {
-    return { lead: "Too late for listed departures", detail: walk, label: `Too late to walk to the listed departures, ${walkMinutes} minute walk`, urgent: false };
+    return {
+      lead: "Too late for listed departures",
+      detail: walk,
+      label: `Too late to walk to any listed departure, ${walkMinutes} minute walk`,
+      urgent: false,
+      targetKey: null,
+    };
   }
-  const leaveAt = d.time - walkMs;
+  const leaveAt = d.time - walkMinutes * 60_000;
   const toward = showHeadsign && d.headsign ? ` to ${d.headsign}` : "";
-  const dep = `${d.kind === "scheduled" ? "est. " : ""}${formatClock(d.time)}${toward}`;
-  const extras = [stale ? "last known" : null, `for the ${dep}`, walk, d.kind === "approx" ? "bus may be delayed" : null];
-  const detail = extras.filter(Boolean).join(" · ");
+  const target = describeTarget(d, noun, toward, now, stale);
+  const extras = [stale ? "last known" : null, `catch ${target}`, walk, d.kind === "approx" ? "may be delayed" : null];
   let lead: string;
   let mins = Infinity;
   if (stale || d.kind === "scheduled") {
@@ -162,9 +205,10 @@ export function leaveView(
   }
   return {
     lead,
-    detail,
-    label: `${lead}, to catch the ${dep} departure, ${walkMinutes} minute walk${stale ? ", based on last known times" : ""}`,
+    detail: extras.filter(Boolean).join(" · "),
+    label: `${lead} to catch ${target}, ${walkMinutes} minute walk${stale ? ", based on last known times" : ""}`,
     urgent: mins <= 2,
+    targetKey: d.key,
   };
 }
 
@@ -178,12 +222,21 @@ function rowView(
   const route = lookup.route(g.routeId);
   const background = route?.color ?? "#575752";
   const all = state.predictions.data?.get(g.id) ?? [];
-  const upcoming = all.filter((d) => d.time >= now - 30_000).slice(0, TIMES_PER_ROW);
+  const stale = freshness === "stale";
+  const pending = all.filter((d) => d.time >= now - LEAVE_GRACE_MS);
+  const leave = leaveView(pending, g.walkMinutes, now, stale, !g.destinationFilter && new Set(pending.slice(0, TIMES_PER_ROW).map((d) => d.headsign)).size > 1, vehicleNoun(route?.type));
+  let upcoming = pending.slice(0, TIMES_PER_ROW);
+  const target = leave?.targetKey ? pending.find((d) => d.key === leave.targetKey) : undefined;
+  if (target && !upcoming.includes(target)) upcoming = [...upcoming.slice(0, TIMES_PER_ROW - 1), target];
+  const reach = (d: Departure): TimeView["reach"] => {
+    if (g.walkMinutes === undefined) return null;
+    if (d === target) return "target";
+    return canReach(d, g.walkMinutes, now) ? null : "missed";
+  };
   const headsigns = new Set(upcoming.map((d) => d.headsign).filter(Boolean));
   const mixed = headsigns.size > 1;
   const destination =
     g.destinationFilter ?? (headsigns.size === 1 ? [...headsigns][0]! : directionLabel(route, g.directionId));
-  const stale = freshness === "stale";
   const alerts = (state.alerts.data ? alertsForGroup(state.alerts.data, g, route?.type, now) : []).map(alertView);
 
   let message: string | null = null;
@@ -204,11 +257,9 @@ function rowView(
       mode: route ? String(route.type) : "",
     },
     destination,
-    times: upcoming.map((d, i) => timeView(d, now, stale, mixed && !g.destinationFilter, i === 0)),
+    times: upcoming.map((d, i) => timeView(d, now, stale, mixed && !g.destinationFilter, i === 0, reach(d))),
     message,
-    leave: upcoming.length
-      ? leaveView(all.filter((d) => d.time >= now - LEAVE_GRACE_MS), g.walkMinutes, now, stale, mixed && !g.destinationFilter)
-      : null,
+    leave: upcoming.length ? leave : null,
     alerts,
   };
 }

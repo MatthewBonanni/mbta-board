@@ -506,6 +506,31 @@ a {
   padding: 0 var(--s1);
 }
 
+/* Walk-time markers: struck through when unreachable on foot, underlined when it's the one to leave for. */
+.t-missed .t-main {
+  color: var(--ink-2);
+  text-decoration: line-through;
+  text-decoration-thickness: 3px;
+}
+
+.t-missed .t-val {
+  font-weight: 400;
+}
+
+.t-target .t-main {
+  position: relative;
+}
+
+.t-target .t-main::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -7px;
+  height: 4px;
+  background: var(--ink);
+}
+
 .row-alerts {
   grid-area: alerts;
   margin-top: var(--s2);
@@ -596,7 +621,32 @@ a {
     text-align: left;
   }
 
-  .row-alerts {
+  /* Walk-time markers: struck through when unreachable on foot, underlined when it's the one to leave for. */
+.t-missed .t-main {
+  color: var(--ink-2);
+  text-decoration: line-through;
+  text-decoration-thickness: 3px;
+}
+
+.t-missed .t-val {
+  font-weight: 400;
+}
+
+.t-target .t-main {
+  position: relative;
+}
+
+.t-target .t-main::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -7px;
+  height: 4px;
+  background: var(--ink);
+}
+
+.row-alerts {
     grid-column: 2 / -1;
   }
 }
