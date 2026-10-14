@@ -16,6 +16,7 @@ describe("leaveView", () => {
   it("targets the first departure reachable at walking pace, not simply the next one", () => {
     const v = leaveView([dep(3), dep(11), dep(20)], 5, T0, false, false, "train")!;
     expect(v.lead).toBe("Leave in 6 min");
+    expect(v.chip).toEqual({ label: "Leave in", value: "6", unit: "min" });
     expect(v.detail).toBe("catch the train in 11 min · 5 min walk");
     expect(v.targetKey).toBe("11");
   });
@@ -27,7 +28,7 @@ describe("leaveView", () => {
 
   it("counts down from schedule estimates (marked est.) but never from stale data", () => {
     expect(leaveView([dep(20, "scheduled")], 5, T0, false, false, "bus")).toMatchObject({ lead: "Leave in 15 min", detail: "catch the bus in 20 min (est.) · 5 min walk" });
-    expect(leaveView([dep(20)], 5, T0, true, false, "bus")).toMatchObject({ lead: "Leave by 1:15 PM", detail: "catch the 1:20 PM bus · 5 min walk", label: expect.stringContaining("based on last known times") });
+    expect(leaveView([dep(20)], 5, T0, true, false, "bus")).toMatchObject({ lead: "Leave by 1:15 PM", detail: "catch the 1:20 PM bus · 5 min walk", label: expect.stringContaining("based on last known times"), chip: { label: "Leave by", value: "1:15", unit: "PM" } });
   });
 
   it("shows nothing without an explicit walk time", () => {

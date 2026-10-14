@@ -119,7 +119,19 @@ function row(r: RowView, opts: BoardRenderOptions): HTMLElement {
           "p",
           { class: "leave" + (r.leave.urgent ? " leave-urgent" : "") },
           h("span", { class: "visually-hidden" }, r.leave.label),
-          h("span", { class: "leave-lead", "aria-hidden": "true" }, r.leave.lead),
+          r.leave.chip
+            ? h(
+                "span",
+                { class: "leave-chip", "aria-hidden": "true" },
+                h("span", { class: "leave-chip-label" }, r.leave.chip.label),
+                h(
+                  "span",
+                  { class: "leave-chip-main" },
+                  h("span", { class: "leave-chip-value" }, r.leave.chip.value),
+                  r.leave.chip.unit ? h("span", { class: "leave-chip-unit" }, r.leave.chip.unit) : null,
+                ),
+              )
+            : h("span", { class: "leave-lead", "aria-hidden": "true" }, r.leave.lead),
           h("span", { class: "leave-detail", "aria-hidden": "true" }, r.leave.detail),
         )
       : null,

@@ -39,6 +39,8 @@ export interface AlertView {
 /** Time to leave the starting point; deliberately phrased and placed apart from departure times. */
 export interface LeaveView {
   lead: string;
+  /** The lead split for display as a chip, e.g. "Leave in" / "5" / "min"; null when there's nothing to catch. */
+  chip: { label: string; value: string; unit: string } | null;
   detail: string;
   label: string;
   urgent: boolean;
@@ -245,6 +247,7 @@ export function leaveView(
       urgent: false,
       targetKey: null,
       leaveAt: null,
+      chip: null,
     };
   }
   const leaveAt = d.time - walkMinutes * 60_000;
@@ -252,12 +255,16 @@ export function leaveView(
   const target = describeTarget(d, noun, toward, now, stale);
   const extras = [`catch ${target}`, includeWalk ? walk : null, d.kind === "approx" ? "may be delayed" : null];
   let lead: string;
+  let chip: LeaveView["chip"];
   let mins = Infinity;
   if (stale) {
     lead = `Leave by ${formatClock(leaveAt)}`;
+    const c = clockParts(leaveAt);
+    chip = { label: "Leave by", value: c.time, unit: c.period };
   } else {
     mins = Math.max(0, Math.floor((leaveAt - now) / 60_000));
     lead = mins === 0 ? "Leave now" : `Leave in ${mins} min`;
+    chip = mins === 0 ? { label: "Leave", value: "Now", unit: "" } : { label: "Leave in", value: String(mins), unit: "min" };
   }
   return {
     lead,
@@ -266,6 +273,7 @@ export function leaveView(
     urgent: mins <= 2,
     targetKey: d.key,
     leaveAt,
+    chip,
   };
 }
 

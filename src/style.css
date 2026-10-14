@@ -561,7 +561,7 @@ a {
   grid-area: leave;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 0 var(--s2);
   margin-top: var(--s2);
   font-weight: 400;
@@ -572,10 +572,46 @@ a {
   font-weight: 700;
 }
 
-.leave-urgent .leave-lead {
+/* Leave time: a solid chip as heavy as the departure time, but boxed and left-aligned so it
+   can't be read as one. Yellow (plus the words) when it's time to go. */
+.leave-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: none;
+  padding: 4px 9px 5px;
   background: var(--inverse-bg);
   color: var(--inverse-fg);
-  padding: 0 var(--s1);
+  line-height: 1;
+}
+
+.leave-chip-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.leave-chip-main {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.leave-chip-value {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.leave-chip-unit {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.leave-urgent .leave-chip {
+  background: var(--yellow);
+  color: #161616;
 }
 
 .leave-detail {
