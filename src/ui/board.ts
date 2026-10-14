@@ -12,7 +12,12 @@ export interface BoardRenderOptions {
 
 function badge(b: RowView["badge"], small = false): HTMLElement {
   const cls = ["badge", small ? "badge-sm" : "", b.text.length > 4 ? "badge-long" : ""].filter(Boolean).join(" ");
-  return h("span", { class: cls, style: `background:${b.background};color:${b.color}`, "data-mode": b.mode }, b.text);
+  return h(
+    "span",
+    { class: cls, style: `background:${b.background};color:${b.color}`, "data-mode": b.mode },
+    h("span", { "aria-hidden": "true" }, b.text),
+    h("span", { class: "visually-hidden" }, b.name),
+  );
 }
 
 function timeCell(t: TimeView, primary: boolean): HTMLElement {
@@ -141,14 +146,9 @@ function axis(): HTMLElement {
   );
 }
 
+/** Column labels sit in the heading band, over the time columns, so they cost no height. */
 function columnHeads(): HTMLElement {
-  return h(
-    "div",
-    { class: "col-heads", "aria-hidden": "true" },
-    h("span", { class: "ch-route" }, "Route"),
-    h("span", { class: "ch-dest" }, "To"),
-    h("span", { class: "ch-times" }, h("span", {}, "Next"), h("span", {}, "Then"), h("span", {}, "Then")),
-  );
+  return h("span", { class: "ch-times", "aria-hidden": "true" }, h("span", {}, "Next"), h("span", {}, "Then"), h("span", {}, "Then"));
 }
 
 function section(s: SectionView, opts: BoardRenderOptions, side = false): HTMLElement {
@@ -160,8 +160,9 @@ function section(s: SectionView, opts: BoardRenderOptions, side = false): HTMLEl
       { class: "stop-head" },
       h(side ? "h3" : "h2", {}, s.heading),
       s.meta ? h("p", { class: "stop-meta" }, s.meta) : null,
+      opts.layout === "list" ? columnHeads() : null,
     ),
-    opts.layout === "timeline" ? axis() : columnHeads(),
+    opts.layout === "timeline" ? axis() : null,
     h("ul", { class: "rows" }, ...s.rows.map((r) => row(r, opts))),
   );
 }

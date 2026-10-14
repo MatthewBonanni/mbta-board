@@ -55,8 +55,20 @@ export function routeMode(type: number): RouteMode {
   }
 }
 
+/** Badge text: MBTA-style abbreviations for rapid transit, rail and ferry; numbers for buses. */
 export function routeLabel(r: RouteInfo | undefined, fallbackId: string): string {
   if (!r) return fallbackId;
+  switch (r.type) {
+    case 1:
+      return `${r.longName.charAt(0)}L`;
+    case 0:
+      if (/^Green Line/.test(r.longName)) return r.shortName ? `GL·${r.shortName}` : "GL";
+      return r.longName.charAt(0);
+    case 2:
+      return "CR";
+    case 4:
+      return r.id.match(/^Boat-(F\d+\w*)$/)?.[1] ?? "F";
+  }
   if (r.shortName) return r.shortName;
   return r.longName.replace(/ Line$/, "") || r.id;
 }

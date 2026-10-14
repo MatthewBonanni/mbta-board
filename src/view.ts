@@ -85,7 +85,8 @@ export interface StatusView {
 
 export interface RowView {
   groupId: string;
-  badge: { text: string; background: string; color: string; mode: string };
+  /** `name` is the full route name for assistive technology; `text` is the short badge label. */
+  badge: { text: string; name: string; background: string; color: string; mode: string };
   destination: string;
   times: TimeView[];
   message: string | null;
@@ -353,6 +354,7 @@ function rowView(
     groupId: g.id,
     badge: {
       text: routeLabel(route, g.routeId),
+      name: spokenRoute(route, g.routeId),
       background,
       color: badgeTextColor(background, route?.textColor ?? WHITE),
       mode: route ? String(route.type) : "",
@@ -466,7 +468,7 @@ function statusView(config: BoardConfig, lookup: Lookup, state: ControllerState,
       const background = route?.color ?? "#575752";
       item = {
         routeId: g.routeId,
-        badge: { text: routeLabel(route, g.routeId), background, color: badgeTextColor(background, route?.textColor ?? WHITE), mode: route ? String(route.type) : "" },
+        badge: { text: routeLabel(route, g.routeId), name: spokenRoute(route, g.routeId), background, color: badgeTextColor(background, route?.textColor ?? WHITE), mode: route ? String(route.type) : "" },
         alerts: [],
       };
       byRoute.set(g.routeId, item);
@@ -509,4 +511,9 @@ function cornerOf(groups: DepartureGroup[], lookup: Lookup): CornerView | null {
     heading: `${shortStreet(first.onStreet)} & ${shortStreet(first.atStreet)}`,
     street: shortStreet(first.onStreet),
   };
+}
+
+function spokenRoute(route: RouteInfo | undefined, routeId: string): string {
+  if (!route) return `Route ${routeId}`;
+  return route.type === 3 ? `Route ${routeLabel(route, routeId)}` : route.longName;
 }
