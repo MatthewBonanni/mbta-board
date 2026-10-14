@@ -167,11 +167,9 @@ a {
 }
 
 .clock {
-  align-self: start;
+  align-self: center;
   position: relative;
   z-index: 1;
-  margin-top: calc(var(--s2) * -1);
-  margin-bottom: -22px;
   display: flex;
   flex-direction: column;
   background: var(--paper);
@@ -248,6 +246,24 @@ a {
 
   .mast-right {
     justify-content: flex-end;
+    grid-column: 3;
+  }
+
+  .mast-left {
+    grid-column: 1;
+  }
+
+  /* Pinned to the top edge, centred, hanging below the band; its column keeps the space free. */
+  .masthead {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) 12rem minmax(0, 1fr);
+  }
+
+  .clock {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
 
@@ -1227,23 +1243,6 @@ html.fit-compact .notice {
   border-top: 0;
 }
 
-/* A two-sided corner may split between columns (one side each) to keep the columns balanced. */
-.stop-corner {
-  /* A size container can't be split across columns; each side is its own container instead. */
-  container-type: normal;
-  break-inside: auto;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-
-.stop-corner > .stop-side,
-.stop-corner > .stop-head {
-  break-inside: avoid;
-}
-
-.stop-corner > .stop-head {
-  break-after: avoid;
-}
 
 .row {
   padding-left: var(--s3);
