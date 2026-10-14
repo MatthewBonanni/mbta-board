@@ -176,27 +176,27 @@ function timeViewBase(d: Departure, now: number, stale: boolean, showHeadsign: b
   const clock = clockParts(d.time);
   const at = formatClock(d.time);
   const toward = headsign ? ` to ${headsign}` : "";
+  // Old data is shown only as clock times: a countdown would keep ticking as if it were current.
   if (stale) {
     return { value: clock.time, unit: clock.period, prefix: "", kind: "last-known", label: `Last known time ${at}${toward}, not live`, headsign, clock: null };
   }
-  if (d.kind === "scheduled") {
-    return { value: clock.time, unit: clock.period, prefix: "Est.", kind: "scheduled", label: `Scheduled estimate ${at}${toward}`, headsign, clock: null };
-  }
   const mins = minutesUntil(d.time, now);
-  const approx = d.kind === "approx";
-  if (mins >= 60) {
-    return { value: clock.time, unit: clock.period, prefix: approx ? "Approx." : "", kind: d.kind, label: `${approx ? "About " : ""}${at}${toward}`, headsign, clock: null };
-  }
-  if (mins === 0) {
-    return { value: "Now", unit: "", prefix: approx ? "Approx." : "", kind: d.kind, label: `${approx ? "About now, may be delayed" : "Now"}, ${at}${toward}`, headsign, clock: at };
-  }
+  const prefix = d.kind === "scheduled" ? "Est." : d.kind === "approx" ? "Approx." : "";
   const minsText = `${mins} minute${mins === 1 ? "" : "s"}`;
+  const spoken =
+    d.kind === "scheduled"
+      ? `Scheduled estimate ${mins === 0 ? "now" : `in ${minsText}`}`
+      : d.kind === "approx"
+        ? `About ${mins === 0 ? "now" : minsText}, may be delayed`
+        : mins === 0
+          ? "Now"
+          : `In ${minsText}`;
   return {
-    value: String(mins),
-    unit: "min",
-    prefix: approx ? "Approx." : "",
+    value: mins === 0 ? "Now" : String(mins),
+    unit: mins === 0 ? "" : "min",
+    prefix,
     kind: d.kind,
-    label: `${approx ? `About ${minsText}, may be delayed` : `In ${minsText}`}, at ${at}${toward}`,
+    label: `${spoken}, at ${at}${toward}`,
     headsign,
     clock: at,
   };
@@ -219,10 +219,9 @@ export function canReach(d: Departure, walkMinutes: number, now: number): boolea
 function describeTarget(d: Departure, noun: string, toward: string, now: number, stale: boolean): string {
   const vehicle = `${noun}${toward}`;
   if (stale) return `the ${formatClock(d.time)} ${vehicle}`;
-  if (d.kind === "scheduled") return `the est. ${formatClock(d.time)} ${vehicle}`;
   const mins = minutesUntil(d.time, now);
-  if (mins >= 60) return `the ${formatClock(d.time)} ${vehicle}`;
-  return mins === 0 ? `the ${vehicle} due now` : `the ${vehicle} in ${mins} min`;
+  const when = mins === 0 ? "due now" : `in ${mins} min`;
+  return `the ${vehicle} ${when}${d.kind === "scheduled" ? " (est.)" : ""}`;
 }
 
 export function leaveView(
@@ -253,11 +252,11 @@ export function leaveView(
   const extras = [`catch ${target}`, includeWalk ? walk : null, d.kind === "approx" ? "may be delayed" : null];
   let lead: string;
   let mins = Infinity;
-  if (stale || d.kind === "scheduled") {
+  if (stale) {
     lead = `Leave by ${formatClock(leaveAt)}`;
   } else {
     mins = Math.max(0, Math.floor((leaveAt - now) / 60_000));
-    lead = mins === 0 ? "Leave now" : mins < 60 ? `Leave in ${mins} min` : `Leave by ${formatClock(leaveAt)}`;
+    lead = mins === 0 ? "Leave now" : `Leave in ${mins} min`;
   }
   return {
     lead,
@@ -282,7 +281,7 @@ function timelineView(
   for (const d of pending) {
     const m = minutesUntil(d.time, now);
     if (m > TIMELINE_MINUTES) break;
-    const clockLabel = stale || d.kind === "scheduled";
+    const clockLabel = stale;
     // Skip labels that would collide with the previous one; the tick still shows.
     let room = m - lastLabelled >= (clockLabel ? 7 : 3);
     if (!room && reach(d) === "target") {
@@ -306,9 +305,9 @@ function timelineView(
   const first = pending[0];
   const beyond =
     !ticks.length && first
-      ? stale || first.kind === "scheduled"
-        ? `Next ${first.kind === "scheduled" ? "est. " : ""}${formatClock(first.time)}`
-        : `Next in ${minutesUntil(first.time, now)} min`
+      ? stale
+        ? `Next ${formatClock(first.time)}`
+        : `Next${first.kind === "scheduled" ? " (est.)" : ""} in ${minutesUntil(first.time, now)} min · ${formatClock(first.time)}`
       : null;
   return { ticks, walk, beyond };
 }

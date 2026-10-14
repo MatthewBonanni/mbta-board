@@ -25,8 +25,8 @@ describe("leaveView", () => {
     expect(leaveView([dep(3)], 5, T0, false, false)!.lead).toBe("Too late for listed departures");
   });
 
-  it("never counts down from schedule estimates or stale data", () => {
-    expect(leaveView([dep(20, "scheduled")], 5, T0, false, false, "bus")).toMatchObject({ lead: "Leave by 1:15 PM", detail: "catch the est. 1:20 PM bus · 5 min walk" });
+  it("counts down from schedule estimates (marked est.) but never from stale data", () => {
+    expect(leaveView([dep(20, "scheduled")], 5, T0, false, false, "bus")).toMatchObject({ lead: "Leave in 15 min", detail: "catch the bus in 20 min (est.) · 5 min walk" });
     expect(leaveView([dep(20)], 5, T0, true, false, "bus")).toMatchObject({ lead: "Leave by 1:15 PM", detail: "catch the 1:20 PM bus · 5 min walk", label: expect.stringContaining("based on last known times") });
   });
 

@@ -86,7 +86,7 @@ describe("timeline", () => {
   it("says when the next departure is beyond the window", () => {
     const t = buildBoardView(config(), lookup, state({ a: [dep("1", 52)] }), T0).sections[0]!.rows[0]!.timeline;
     expect(t.ticks).toEqual([]);
-    expect(t.beyond).toBe("Next in 52 min");
+    expect(t.beyond).toBe("Next in 52 min · 1:52 PM");
   });
 });
 

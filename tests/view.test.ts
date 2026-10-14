@@ -47,14 +47,14 @@ describe("board states", () => {
     expect(row(state(feed(new Map([["a", []]]), T0), feed([suspension], T0))).message).toBe("No service — see alert");
   });
 
-  it("labels schedule-based and delayed bus times so they can't be mistaken for live countdowns", () => {
+  it("marks schedule-based and delayed bus times, and gives every countdown its clock time", () => {
     const deps = [
       { key: "1", tripId: "1", stopId: "1001", time: T0 + 4 * 60_000 + 5_000, kind: "approx" as const, headsign: null },
       { key: "2", tripId: "2", stopId: "1001", time: T0 + 12 * 60_000, kind: "scheduled" as const, headsign: null },
     ];
     const [approx, sched] = row(state(feed(new Map([["a", deps]]), T0))).times;
     expect(approx).toMatchObject({ value: "4", unit: "min", prefix: "Approx.", clock: "1:04 PM" });
-    expect(sched).toMatchObject({ value: "1:12", unit: "PM", prefix: "Est.", clock: null });
+    expect(sched).toMatchObject({ value: "12", unit: "min", prefix: "Est.", kind: "scheduled", clock: "1:12 PM" });
   });
 });
 
