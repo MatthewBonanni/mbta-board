@@ -27,3 +27,10 @@ export function formatAge(ms: number): string {
   const h = Math.floor(m / 60);
   return `${h} h ${m % 60} min ago`;
 }
+
+const dateFmt = new Intl.DateTimeFormat("en-US", { timeZone: TIMEZONE, weekday: "short", month: "short", day: "numeric" });
+
+/** "Tue, Oct 14" in Boston time. */
+export function formatDate(ms: number): string {
+  return dateFmt.format(new Date(ms));
+}

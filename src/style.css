@@ -161,9 +161,58 @@ a {
   outline: none;
 }
 
+/* The clock is a white tag hanging from the band, with the date on a yellow strip. */
+.masthead {
+  overflow: visible;
+}
+
 .clock {
-  font-size: 1.75rem;
+  align-self: start;
+  position: relative;
+  z-index: 1;
+  margin-top: calc(var(--s2) * -1);
+  margin-bottom: -22px;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-top: 0;
   font-weight: 700;
+  line-height: 1;
+}
+
+.clock-date {
+  padding: 3px 12px;
+  background: var(--yellow);
+  color: #161616;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.clock-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25em;
+  padding: 6px 18px 8px;
+}
+
+.clock-time {
+  font-size: 2.5rem;
+  letter-spacing: -0.02em;
+}
+
+.clock-period {
+  font-size: 0.875rem;
+  letter-spacing: 0.06em;
+}
+
+/* Room under the band for the hanging tag. */
+.board-fit {
+  padding-top: 18px;
 }
 
 .freshness {

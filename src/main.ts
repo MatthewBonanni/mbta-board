@@ -6,7 +6,7 @@ import { Metadata } from "./metadata";
 import { OsmClient } from "./osm";
 import { readPrefs, writePrefs, type DevicePrefs } from "./prefs";
 import { BOSTON, isDark } from "./sun";
-import { formatClock } from "./time";
+import { clockParts, formatClock, formatDate } from "./time";
 import { declutter, renderNextLeave, renderSections, renderStatus } from "./ui/board";
 import { announce, h, replaceKeepingFocus } from "./ui/dom";
 import { clearFit, fitToScreen } from "./ui/fit";
@@ -94,12 +94,25 @@ function boardShell(): void {
   renderBoard();
 }
 
+const clockTime = h("span", { class: "clock-time" });
+const clockPeriod = h("span", { class: "clock-period" });
+const clockDate = h("span", { class: "clock-date" });
+clock.append(clockDate, h("span", { class: "clock-main" }, clockTime, clockPeriod));
+
+function renderClock(now: number): void {
+  const { time, period } = clockParts(now);
+  clockTime.textContent = time;
+  clockPeriod.textContent = period;
+  clockDate.textContent = formatDate(now);
+  clock.dateTime = new Date(now).toISOString();
+  clock.setAttribute("aria-label", `${formatClock(now)}, ${formatDate(now)}`);
+}
+
 function renderBoard(): void {
   const now = source.now();
   applyTheme();
   const view = buildBoardView(config, source.lookup, source.state(), now);
-  clock.textContent = formatClock(now);
-  clock.dateTime = new Date(now).toISOString();
+  renderClock(now);
   document.documentElement.dataset.density = config.density;
 
   freshnessEl.dataset.state = view.freshness;
