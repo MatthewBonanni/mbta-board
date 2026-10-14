@@ -105,36 +105,39 @@ function row(r: RowView, opts: BoardRenderOptions): HTMLElement {
     h(
       "span",
       { class: "dest" },
-      h("span", { class: "visually-hidden" }, "to "),
-      r.destination,
-      r.lastKnown ? h("span", { class: "row-tag" }, "Last known") : null,
+      h(
+        "span",
+        { class: "dest-name" },
+        h("span", { class: "visually-hidden" }, "to "),
+        r.destination,
+        r.lastKnown ? h("span", { class: "row-tag" }, "Last known") : null,
+      ),
+      r.leave
+        ? h(
+            "span",
+            { class: "leave" + (r.leave.urgent ? " leave-urgent" : "") },
+            h("span", { class: "visually-hidden" }, r.leave.label),
+            r.leave.chip
+              ? h(
+                  "span",
+                  { class: "leave-chip", "aria-hidden": "true" },
+                  h("span", { class: "leave-chip-label" }, r.leave.chip.label),
+                  h(
+                    "span",
+                    { class: "leave-chip-main" },
+                    h("span", { class: "leave-chip-value" }, r.leave.chip.value),
+                    r.leave.chip.unit ? h("span", { class: "leave-chip-unit" }, r.leave.chip.unit) : null,
+                  ),
+                )
+              : h("span", { class: "leave-lead", "aria-hidden": "true" }, r.leave.lead),
+          )
+        : null,
     ),
     timelineMode
       ? timeline(r.timeline, r)
       : r.message
         ? h("span", { class: "row-msg" }, r.message)
         : h("span", { class: "times" }, timeCell(next!, true), ...later.map((t) => timeCell(t, false))),
-    r.leave
-      ? h(
-          "p",
-          { class: "leave" + (r.leave.urgent ? " leave-urgent" : "") },
-          h("span", { class: "visually-hidden" }, r.leave.label),
-          r.leave.chip
-            ? h(
-                "span",
-                { class: "leave-chip", "aria-hidden": "true" },
-                h("span", { class: "leave-chip-label" }, r.leave.chip.label),
-                h(
-                  "span",
-                  { class: "leave-chip-main" },
-                  h("span", { class: "leave-chip-value" }, r.leave.chip.value),
-                  r.leave.chip.unit ? h("span", { class: "leave-chip-unit" }, r.leave.chip.unit) : null,
-                ),
-              )
-            : h("span", { class: "leave-lead", "aria-hidden": "true" }, r.leave.lead),
-          h("span", { class: "leave-detail", "aria-hidden": "true" }, r.leave.detail),
-        )
-      : null,
     r.alerts.length && !opts.hideRowAlerts
       ? h(
           "div",
