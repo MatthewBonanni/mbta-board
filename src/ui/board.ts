@@ -1,4 +1,4 @@
-import type { AlertView, BoardView, NextLeaveView, RowView, SectionView, StatusView, TimelineView, TimeView } from "../view";
+import type { AlertView, BoardView, LeaveView, NextLeaveView, RowView, SectionView, StatusView, TimelineView, TimeView } from "../view";
 import { TIMELINE_MINUTES } from "../view";
 import { h } from "./dom";
 
@@ -17,6 +17,15 @@ function badge(b: RowView["badge"], small = false): HTMLElement {
     { class: cls, style: `background:${b.background};color:${b.color}`, "data-mode": b.mode },
     h("span", { "aria-hidden": "true" }, b.text),
     h("span", { class: "visually-hidden" }, b.name),
+  );
+}
+
+function leaveChip(c: NonNullable<LeaveView["chip"]>, extra = ""): HTMLElement {
+  return h(
+    "span",
+    { class: `leave-chip${extra ? ` ${extra}` : ""}`, "aria-hidden": "true" },
+    h("span", { class: "leave-chip-label" }, c.label),
+    h("span", { class: "leave-chip-main" }, h("span", { class: "leave-chip-value" }, c.value), c.unit ? h("span", { class: "leave-chip-unit" }, c.unit) : null),
   );
 }
 
@@ -118,17 +127,7 @@ function row(r: RowView, opts: BoardRenderOptions): HTMLElement {
             { class: "leave" + (r.leave.urgent ? " leave-urgent" : "") },
             h("span", { class: "visually-hidden" }, r.leave.label),
             r.leave.chip
-              ? h(
-                  "span",
-                  { class: "leave-chip", "aria-hidden": "true" },
-                  h("span", { class: "leave-chip-label" }, r.leave.chip.label),
-                  h(
-                    "span",
-                    { class: "leave-chip-main" },
-                    h("span", { class: "leave-chip-value" }, r.leave.chip.value),
-                    r.leave.chip.unit ? h("span", { class: "leave-chip-unit" }, r.leave.chip.unit) : null,
-                  ),
-                )
+              ? leaveChip(r.leave.chip)
               : h("span", { class: "leave-lead", "aria-hidden": "true" }, r.leave.lead),
           )
         : null,
@@ -213,7 +212,7 @@ export function renderNextLeave(n: NextLeaveView): HTMLElement {
     "section",
     { class: "next-leave" + (n.urgent ? " next-leave-urgent" : ""), "aria-label": "Next departure to leave for" },
     h("span", { class: "visually-hidden" }, n.label),
-    h("p", { class: "nl-lead", "aria-hidden": "true" }, n.lead),
+    n.chip ? h("p", { class: "nl-lead" }, leaveChip(n.chip, "leave-chip-large")) : h("p", { class: "nl-lead", "aria-hidden": "true" }, n.lead),
     h(
       "p",
       { class: "nl-what", "aria-hidden": "true" },

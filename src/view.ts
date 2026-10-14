@@ -66,6 +66,7 @@ export interface TimelineView {
 
 export interface NextLeaveView {
   lead: string;
+  chip: LeaveView["chip"];
   detail: string;
   label: string;
   urgent: boolean;
@@ -458,6 +459,7 @@ function pickNextLeave(sections: SectionView[]): NextLeaveView | null {
   const walkInHeading = section.meta?.match(/(\d+ min walk)/)?.[1];
   return {
     lead: leave.lead,
+    chip: leave.chip,
     detail: [leave.detail, walkInHeading].filter(Boolean).join(" · "),
     label: `${leave.label}, ${row.badge.text} to ${row.destination} from ${section.heading}`,
     urgent: leave.urgent,
