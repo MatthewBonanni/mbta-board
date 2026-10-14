@@ -23,6 +23,8 @@ export interface TimeView {
   /** Full text for assistive technology. */
   label: string;
   headsign: string | null;
+  /** Fine-print clock time under a countdown; null when the value is already a clock time. */
+  clock: string | null;
   /** With a walk time set: the departure the leave time targets, or one that can't be reached on foot. */
   reach: "target" | "missed" | null;
 }
@@ -175,18 +177,18 @@ function timeViewBase(d: Departure, now: number, stale: boolean, showHeadsign: b
   const at = formatClock(d.time);
   const toward = headsign ? ` to ${headsign}` : "";
   if (stale) {
-    return { value: clock.time, unit: clock.period, prefix: "", kind: "last-known", label: `Last known time ${at}${toward}, not live`, headsign };
+    return { value: clock.time, unit: clock.period, prefix: "", kind: "last-known", label: `Last known time ${at}${toward}, not live`, headsign, clock: null };
   }
   if (d.kind === "scheduled") {
-    return { value: clock.time, unit: clock.period, prefix: "Est.", kind: "scheduled", label: `Scheduled estimate ${at}${toward}`, headsign };
+    return { value: clock.time, unit: clock.period, prefix: "Est.", kind: "scheduled", label: `Scheduled estimate ${at}${toward}`, headsign, clock: null };
   }
   const mins = minutesUntil(d.time, now);
   const approx = d.kind === "approx";
   if (mins >= 60) {
-    return { value: clock.time, unit: clock.period, prefix: approx ? "Approx." : "", kind: d.kind, label: `${approx ? "About " : ""}${at}${toward}`, headsign };
+    return { value: clock.time, unit: clock.period, prefix: approx ? "Approx." : "", kind: d.kind, label: `${approx ? "About " : ""}${at}${toward}`, headsign, clock: null };
   }
   if (mins === 0) {
-    return { value: "Now", unit: "", prefix: approx ? "Approx." : "", kind: d.kind, label: `${approx ? "About now, may be delayed" : "Now"}${toward}`, headsign };
+    return { value: "Now", unit: "", prefix: approx ? "Approx." : "", kind: d.kind, label: `${approx ? "About now, may be delayed" : "Now"}, ${at}${toward}`, headsign, clock: at };
   }
   const minsText = `${mins} minute${mins === 1 ? "" : "s"}`;
   return {
@@ -194,8 +196,9 @@ function timeViewBase(d: Departure, now: number, stale: boolean, showHeadsign: b
     unit: "min",
     prefix: approx ? "Approx." : "",
     kind: d.kind,
-    label: `${approx ? `About ${minsText}, may be delayed` : `In ${minsText}`}${toward}`,
+    label: `${approx ? `About ${minsText}, may be delayed` : `In ${minsText}`}, at ${at}${toward}`,
     headsign,
+    clock: at,
   };
 }
 

@@ -27,6 +27,7 @@ function timeCell(t: TimeView, primary: boolean): HTMLElement {
       h("span", { class: "t-val" }, t.value),
       t.unit ? h("span", { class: "t-unit" }, t.unit) : null,
     ),
+    t.clock ? h("span", { class: "t-clock", "aria-hidden": "true" }, t.clock) : null,
     t.headsign ? h("span", { class: "t-head", "aria-hidden": "true" }, t.headsign) : null,
   );
 }

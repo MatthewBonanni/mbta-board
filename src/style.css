@@ -538,6 +538,23 @@ a {
   font-size: var(--t-later);
 }
 
+/* Fine-print clock time under a countdown; clears the target underline above it. */
+.t-clock {
+  margin-top: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.t-missed .t-clock {
+  text-decoration: line-through;
+}
+
+.t-clock + .t-head {
+  margin-top: 0;
+}
+
 .t-head {
   margin-top: 8px;
   font-size: var(--t-meta);

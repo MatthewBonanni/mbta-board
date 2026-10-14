@@ -53,8 +53,8 @@ describe("board states", () => {
       { key: "2", tripId: "2", stopId: "1001", time: T0 + 12 * 60_000, kind: "scheduled" as const, headsign: null },
     ];
     const [approx, sched] = row(state(feed(new Map([["a", deps]]), T0))).times;
-    expect(approx).toMatchObject({ value: "4", unit: "min", prefix: "Approx." });
-    expect(sched).toMatchObject({ value: "1:12", unit: "PM", prefix: "Est." });
+    expect(approx).toMatchObject({ value: "4", unit: "min", prefix: "Approx.", clock: "1:04 PM" });
+    expect(sched).toMatchObject({ value: "1:12", unit: "PM", prefix: "Est.", clock: null });
   });
 });
 
