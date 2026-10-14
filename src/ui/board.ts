@@ -11,7 +11,7 @@ export interface BoardRenderOptions {
 }
 
 function badge(b: RowView["badge"], small = false): HTMLElement {
-  const cls = ["badge", small ? "badge-sm" : "", b.text.length > 4 ? "badge-long" : ""].filter(Boolean).join(" ");
+  const cls = ["badge", small ? "badge-sm" : "", b.text.length > 3 ? "badge-long" : ""].filter(Boolean).join(" ");
   return h(
     "span",
     { class: cls, style: `background:${b.background};color:${b.color}`, "data-mode": b.mode },

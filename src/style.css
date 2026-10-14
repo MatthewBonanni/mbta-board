@@ -434,7 +434,7 @@ a {
 
 .row {
   display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
   grid-template-areas:
     "badge dest times"
     ". leave leave"
@@ -470,28 +470,32 @@ a {
 
 .badge {
   grid-area: badge;
+  justify-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.75rem;
-  padding: var(--s1);
+  width: 3.25rem;
+  height: 2.25rem;
+  border-radius: 1.125rem;
   font-size: var(--t-row);
   font-weight: 700;
-  line-height: 1.05;
+  letter-spacing: -0.02em;
+  line-height: 1;
   text-align: center;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .badge-long {
-  font-size: var(--t-meta);
+  font-size: 0.875rem;
 }
 
 .badge-sm {
   display: inline-flex;
-  min-width: 3rem;
-  min-height: 2rem;
+  width: 2.75rem;
+  height: 1.75rem;
+  border-radius: 0.875rem;
   font-size: var(--t-meta);
-  padding: 2px var(--s2);
   flex: none;
 }
 
@@ -738,7 +742,7 @@ a {
 /* Narrow sections: times move under the destination instead of shrinking. */
 @container stop (max-width: 31rem) {
   .row {
-    grid-template-columns: 4rem minmax(0, 1fr);
+    grid-template-columns: 3.25rem minmax(0, 1fr);
     grid-template-areas:
       "badge dest"
       "badge times"
@@ -872,7 +876,7 @@ a {
 }
 
 .row-timeline {
-  grid-template-columns: 4.5rem minmax(7rem, 12rem) minmax(0, 1fr);
+  grid-template-columns: 3.25rem minmax(7rem, 12rem) minmax(0, 1fr);
   grid-template-areas:
     "badge dest lane"
     ". leave leave"
@@ -881,7 +885,7 @@ a {
 
 .axis {
   display: grid;
-  grid-template-columns: 4.5rem minmax(7rem, 12rem) minmax(0, 1fr);
+  grid-template-columns: 3.25rem minmax(7rem, 12rem) minmax(0, 1fr);
   column-gap: var(--s4);
   margin-top: var(--s1);
 }
@@ -1015,7 +1019,7 @@ a {
 
 @container stop (max-width: 31rem) {
   .row-timeline {
-    grid-template-columns: 4rem minmax(0, 1fr);
+    grid-template-columns: 3.25rem minmax(0, 1fr);
     grid-template-areas:
       "badge dest"
       "lane lane"
@@ -1058,10 +1062,6 @@ html.fit-compact {
 html.fit-compact .board {
   padding-top: var(--s3);
   padding-bottom: var(--s2);
-}
-
-html.fit-compact .badge {
-  min-height: 2.25rem;
 }
 
 html.fit-compact .stop-head {
