@@ -141,12 +141,27 @@ function axis(): HTMLElement {
   );
 }
 
+function columnHeads(): HTMLElement {
+  return h(
+    "div",
+    { class: "col-heads", "aria-hidden": "true" },
+    h("span", { class: "ch-route" }, "Route"),
+    h("span", { class: "ch-dest" }, "To"),
+    h("span", { class: "ch-times" }, h("span", {}, "Next"), h("span", {}, "Then"), h("span", {}, "Then")),
+  );
+}
+
 function section(s: SectionView, opts: BoardRenderOptions, side = false): HTMLElement {
   return h(
     "section",
     { class: side ? "stop stop-side" : "stop", "aria-label": s.heading },
-    h("div", { class: "stop-head" }, h(side ? "h3" : "h2", {}, s.heading), s.meta ? h("p", { class: "stop-meta" }, s.meta) : null),
-    opts.layout === "timeline" ? axis() : null,
+    h(
+      "div",
+      { class: "stop-head" },
+      h(side ? "h3" : "h2", {}, s.heading),
+      s.meta ? h("p", { class: "stop-meta" }, s.meta) : null,
+    ),
+    opts.layout === "timeline" ? axis() : columnHeads(),
     h("ul", { class: "rows" }, ...s.rows.map((r) => row(r, opts))),
   );
 }

@@ -80,11 +80,14 @@ function settingsButton(): HTMLElement {
 
 function boardShell(): void {
   masthead.replaceChildren(
-    h("img", { class: "mark", src: `${import.meta.env.BASE_URL}icons/mark.svg`, alt: "", width: 28, height: 28 }),
-    h("h1", { class: "masthead-title" }, config.title),
+    h(
+      "div",
+      { class: "mast-left" },
+      h("img", { class: "mark", src: `${import.meta.env.BASE_URL}icons/mark.svg`, alt: "", width: 28, height: 28 }),
+      h("h1", { class: "masthead-title" }, config.title),
+    ),
     clock,
-    freshnessEl,
-    settingsButton(),
+    h("div", { class: "mast-right" }, freshnessEl, settingsButton()),
   );
   app.replaceChildren(masthead, fitBox, liveRegion);
   lastSignature = "";
@@ -103,7 +106,7 @@ function renderBoard(): void {
   freshnessEl.replaceChildren(
     view.freshness === "idle" ? "" : h("span", { class: "fresh-mark", "aria-hidden": "true" }),
     h("strong", {}, view.freshness === "idle" ? "" : view.freshnessText),
-    view.freshnessDetail ? h("span", { class: "fresh-detail" }, view.freshnessDetail) : "",
+    view.freshnessDetail ? h("span", { class: "fresh-detail" }, view.freshnessDetail.split(" · ")[0]!) : "",
   );
 
   if (lastFreshness !== null && view.freshness !== lastFreshness) {
@@ -114,6 +117,9 @@ function renderBoard(): void {
 
   const bannerItems = [
     source.banner ? h("p", { class: "notice notice-demo" }, source.banner) : null,
+    view.freshness === "stale" && view.freshnessDetail
+      ? h("p", { class: "notice notice-warn", role: "status" }, `Not live: ${view.freshnessDetail}.`)
+      : null,
     storageWarning ? h("p", { class: "notice notice-warn" }, storageWarning) : null,
     view.alertsStale ? h("p", { class: "notice" }, "Service alerts may be out of date.") : null,
   ].filter((x): x is HTMLParagraphElement => x !== null);
