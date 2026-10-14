@@ -566,14 +566,15 @@ a {
   font-weight: 700;
 }
 
-/* Leave time: a solid chip as heavy as the departure time, but boxed and left-aligned so it
-   can't be read as one. Yellow (plus the words) when it's time to go. */
+/* Leave time: a compact pill echoing the route pills, filled so it reads as "your action",
+   never placed in the time columns. Yellow (plus the words) when it's time to go. */
 .leave-chip {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 5px;
   flex: none;
-  padding: 4px 9px 5px;
+  padding: 3px 12px 4px;
+  border-radius: 999px;
   background: var(--inverse-bg);
   color: var(--inverse-fg);
   line-height: 1;
@@ -584,6 +585,7 @@ a {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  opacity: 0.8;
 }
 
 .leave-chip-main {
@@ -593,7 +595,7 @@ a {
 }
 
 .leave-chip-value {
-  font-size: 2rem;
+  font-size: 1.375rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
